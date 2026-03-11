@@ -7,7 +7,7 @@ import {
   CalendarCheck, PhoneCall, PhoneMissed, PhoneIncoming, PhoneOff,
   CheckCircle, UserX, XCircle, BarChart3, CalendarDays, Activity,
   Save, Ban, AlertTriangle, CalendarPlus, RefreshCw, UsersRound,
-  ChevronDown, Bell, BookOpen, Grid, List
+  ChevronDown, Bell, BookOpen, Grid, List, Star, UserPlus
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
@@ -80,6 +80,12 @@ const CALL_CONFIG = {
   'ยังไม่โทรคอนเฟิม':   { bg: 'bg-slate-100', text: 'text-slate-600', border: 'border-slate-300', icon: PhoneMissed },
   'คอนเฟิมนัดแล้ว':    { bg: 'bg-emerald-50',text: 'text-emerald-700',border: 'border-emerald-400',icon: PhoneIncoming },
   'ไม่รับสายรอโทรใหม่': { bg: 'bg-amber-50',  text: 'text-amber-700',  border: 'border-amber-400',  icon: PhoneOff },
+};
+
+// ─── Helper: Check if booking is new customer (no HN or HN not in patient records) ──
+const isNewCustomer = (booking, patients) => {
+  if (!booking.hn || booking.hn.trim() === '') return true;
+  return !patients.some(p => String(p.hn).toLowerCase() === String(booking.hn).toLowerCase());
 };
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
@@ -163,12 +169,31 @@ const StatCard = ({ label, value, Icon, bg, text, onClick }) => (
   </div>
 );
 
+// ─── NEW: Customer Type Card (larger, more prominent) ─────────────────────────
+const CustomerTypeCard = ({ label, value, Icon, gradient, iconBg, iconText, badge, onClick }) => (
+  <div onClick={onClick}
+    className={`cursor-pointer hover:-translate-y-1 bg-gradient-to-br ${gradient} p-4 sm:p-5 rounded-2xl shadow-sm border border-white/60 flex items-center gap-4 hover:shadow-lg transition-all`}>
+    <div className={`p-3 ${iconBg} ${iconText} rounded-2xl shadow-sm shrink-0`}>
+      <Icon className="w-6 h-6" />
+    </div>
+    <div className="flex-1 min-w-0">
+      <p className="text-[10px] sm:text-xs uppercase font-bold text-slate-500 tracking-wider leading-tight">{label}</p>
+      <h3 className="text-3xl sm:text-4xl font-bold text-slate-800 leading-none mt-0.5">{value}</h3>
+    </div>
+    {badge && (
+      <span className={`shrink-0 text-[10px] font-bold px-2 py-1 rounded-full ${badge}`}>
+        {Math.round((value / (value || 1)) * 100)}%
+      </span>
+    )}
+  </div>
+);
+
 // ─── Booking Form Modal ───────────────────────────────────────────────────────
 const BookingFormModal = ({ booking, patients, onClose, onSave, isOffline, allBookings }) => {
   const [form, setForm] = useState(booking);
   const [hnWarn, setHnWarn] = useState('');
   const [saving, setSaving] = useState(false);
-  const [isNewCustomer, setIsNewCustomer] = useState(!booking.hn);
+  const [isNewCust, setIsNewCust] = useState(!booking.hn);
 
   const checkHN = useCallback((hn, date, excludeId) => {
     if (!hn || !date) { setHnWarn(''); return; }
@@ -220,16 +245,16 @@ const BookingFormModal = ({ booking, patients, onClose, onSave, isOffline, allBo
           <div className="bg-blue-50 rounded-2xl p-4 border border-blue-100">
             <p className="text-xs font-bold text-blue-500 uppercase tracking-wider mb-3">ข้อมูลลูกค้า</p>
             <div className="flex gap-2 mb-3">
-              <button type="button" onClick={() => setIsNewCustomer(false)}
-                className={`flex-1 py-2 rounded-xl text-sm font-bold transition-all ${!isNewCustomer ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-blue-600 border border-blue-200'}`}>
+              <button type="button" onClick={() => setIsNewCust(false)}
+                className={`flex-1 py-2 rounded-xl text-sm font-bold transition-all ${!isNewCust ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-blue-600 border border-blue-200'}`}>
                 ลูกค้าเดิม
               </button>
-              <button type="button" onClick={() => setIsNewCustomer(true)}
-                className={`flex-1 py-2 rounded-xl text-sm font-bold transition-all ${isNewCustomer ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-blue-600 border border-blue-200'}`}>
+              <button type="button" onClick={() => setIsNewCust(true)}
+                className={`flex-1 py-2 rounded-xl text-sm font-bold transition-all ${isNewCust ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-blue-600 border border-blue-200'}`}>
                 ลูกค้าใหม่
               </button>
             </div>
-            {!isNewCustomer ? (
+            {!isNewCust ? (
               <div>
                 <label className="block text-xs font-bold text-slate-600 mb-1">เลือกลูกค้า</label>
                 <select onChange={e => handleHNSelect(e.target.value)} defaultValue=""
@@ -317,6 +342,7 @@ const BookingDetailModal = ({ booking, onClose, onUpdateStatus, onUpdateCallStat
   const [updating, setUpdating] = useState(false);
 
   const sc = STATUS_CONFIG[booking.status] || STATUS_CONFIG['ยังไม่มา'];
+  const newCust = isNewCustomer(booking, patients);
 
   const doStatus = async (status) => { setUpdating(true); await onUpdateStatus(booking.id, { status }); setUpdating(false); onClose(); };
 
@@ -374,7 +400,19 @@ const BookingDetailModal = ({ booking, onClose, onUpdateStatus, onUpdateCallStat
     <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[92vh]">
         <div className="px-6 py-4 flex items-start justify-between shrink-0">
-          <span className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest ${sc.bg} ${sc.text}`}>{booking.status}</span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest ${sc.bg} ${sc.text}`}>{booking.status}</span>
+            {/* NEW: Customer type badge */}
+            {newCust ? (
+              <span className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold bg-amber-100 text-amber-700 border border-amber-300">
+                <UserPlus className="w-3 h-3" /> ลูกค้าใหม่
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold bg-purple-100 text-purple-700 border border-purple-300">
+                <Star className="w-3 h-3" /> ลูกค้าเก่า
+              </span>
+            )}
+          </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition-colors"><X className="w-5 h-5" /></button>
         </div>
         <div className="overflow-y-auto flex-grow px-6 pb-4 space-y-4">
@@ -511,7 +549,7 @@ const BookingDetailModal = ({ booking, onClose, onUpdateStatus, onUpdateCallStat
 };
 
 // ─── Booking List Modal ───────────────────────────────────────────────────────
-const BookingListModal = ({ title, bookings, onClose, onSelectBooking }) => (
+const BookingListModal = ({ title, bookings, onClose, onSelectBooking, patients }) => (
   <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4">
     <div className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[85vh]">
       <div className="px-5 py-4 flex items-center justify-between border-b border-slate-100 shrink-0">
@@ -523,12 +561,20 @@ const BookingListModal = ({ title, bookings, onClose, onSelectBooking }) => (
           <p className="text-center text-slate-400 py-8 text-sm">ไม่มีข้อมูล</p>
         ) : bookings.map(b => {
           const sc = STATUS_CONFIG[b.status] || STATUS_CONFIG['ยังไม่มา'];
+          const newCust = patients ? isNewCustomer(b, patients) : false;
           return (
             <div key={b.id} onClick={() => { onClose(); onSelectBooking(b); }}
               className="bg-white p-3 rounded-2xl border-2 border-slate-100 hover:border-blue-300 hover:shadow-md transition-all cursor-pointer">
               <div className="flex justify-between items-start gap-2">
                 <div className="flex-1 min-w-0">
-                  <p className="font-bold text-slate-800 text-sm truncate">{b.customerName || 'ไม่มีชื่อ'}</p>
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <p className="font-bold text-slate-800 text-sm truncate">{b.customerName || 'ไม่มีชื่อ'}</p>
+                    {newCust && (
+                      <span className="shrink-0 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-700">
+                        <UserPlus className="w-2.5 h-2.5" />ใหม่
+                      </span>
+                    )}
+                  </div>
                   {b.hn && <p className="text-[11px] text-blue-500 font-bold">HN: {b.hn}</p>}
                   <p className="text-xs text-slate-400 truncate mt-0.5">{b.procedure || '-'}</p>
                   <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${sc.bg} ${sc.text}`}>{b.status}</span>
@@ -547,7 +593,7 @@ const BookingListModal = ({ title, bookings, onClose, onSelectBooking }) => (
 );
 
 // ─── CALENDAR VIEW COMPONENT ─────────────────────────────────────────────────
-const CalendarView = ({ bookings, onSelectDate, onAddBooking }) => {
+const CalendarView = ({ bookings, patients, onSelectDate, onAddBooking }) => {
   const today = new Date();
   const [calYear, setCalYear] = useState(today.getFullYear());
   const [calMonth, setCalMonth] = useState(today.getMonth());
@@ -567,14 +613,6 @@ const CalendarView = ({ bookings, onSelectDate, onAddBooking }) => {
     bookingsByDate[b.bookingDate].push(b);
   });
 
-  const STATUS_DOT_COLOR = {
-    'ยังไม่มา': 'bg-blue-400',
-    'มาแล้ว': 'bg-emerald-400',
-    'เลื่อนนัด': 'bg-indigo-400',
-    'ไม่มาตามนัด': 'bg-rose-400',
-    'ยกเลิกนัด': 'bg-slate-400',
-  };
-
   const cells = [];
   for (let i = 0; i < firstDayOfWeek; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
@@ -588,7 +626,18 @@ const CalendarView = ({ bookings, onSelectDate, onAddBooking }) => {
           <span className="text-sm font-bold min-w-[130px] text-center">{MONTH_TH[calMonth]} {calYear + 543}</span>
           <button onClick={nextMonth} className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"><ChevronRight className="w-4 h-4" /></button>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          {/* Legend */}
+          <div className="hidden sm:flex items-center gap-3 text-[10px] font-bold">
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-full bg-purple-400" />
+              <span className="text-white/80">ลูกค้าเก่า</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-full bg-amber-400" />
+              <span className="text-white/80">ลูกค้าใหม่</span>
+            </div>
+          </div>
           <button onClick={goToday} className="text-xs font-bold bg-white/20 hover:bg-white/30 px-3 py-1 rounded-lg transition-colors">วันนี้</button>
         </div>
       </div>
@@ -603,9 +652,11 @@ const CalendarView = ({ bookings, onSelectDate, onAddBooking }) => {
       {/* Days grid */}
       <div className="grid grid-cols-7 divide-x divide-y divide-slate-100">
         {cells.map((day, idx) => {
-          if (!day) return <div key={`e-${idx}`} className="min-h-[70px] sm:min-h-[80px] bg-slate-50/50" />;
+          if (!day) return <div key={`e-${idx}`} className="min-h-[70px] sm:min-h-[90px] bg-slate-50/50" />;
           const dateKey = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-          const dayBookings = bookingsByDate[dateKey] || [];
+          // ── Sort bookings by time ──
+          const rawBookings = bookingsByDate[dateKey] || [];
+          const dayBookings = [...rawBookings].sort((a, b) => (a.bookingTime || '').localeCompare(b.bookingTime || ''));
           const isToday = dateKey === todayKey;
           const colIdx = (firstDayOfWeek + day - 1) % 7;
           const isWeekend = colIdx === 0 || colIdx === 6;
@@ -615,7 +666,7 @@ const CalendarView = ({ bookings, onSelectDate, onAddBooking }) => {
             <div
               key={day}
               onClick={() => onSelectDate(dateKey)}
-              className={`min-h-[70px] sm:min-h-[80px] p-1.5 cursor-pointer transition-all hover:bg-blue-50 group relative
+              className={`min-h-[70px] sm:min-h-[90px] p-1 cursor-pointer transition-all hover:bg-blue-50 group relative
                 ${isToday ? 'bg-blue-50/70' : ''}
               `}
             >
@@ -624,19 +675,25 @@ const CalendarView = ({ bookings, onSelectDate, onAddBooking }) => {
                 ${isToday ? 'bg-blue-600 text-white' : isWeekend ? (colIdx===0?'text-red-500':'text-blue-500') : 'text-slate-700'}
               `}>{day}</div>
 
-              {/* Booking chips */}
+              {/* Booking chips — sorted by time, new customers highlighted */}
               <div className="space-y-0.5">
-                {dayBookings.slice(0, 2).map((b, bi) => {
+                {dayBookings.slice(0, 3).map((b, bi) => {
                   const sc = STATUS_CONFIG[b.status] || STATUS_CONFIG['ยังไม่มา'];
+                  const newCust = isNewCustomer(b, patients);
                   return (
-                    <div key={bi} className={`text-[9px] sm:text-[10px] font-semibold px-1 py-0.5 rounded truncate leading-tight
-                      ${sc.bg} ${sc.text}`}>
-                      {b.bookingTime} {b.customerName}
+                    <div key={bi}
+                      className={`text-[9px] sm:text-[10px] font-semibold px-1 py-0.5 rounded leading-tight flex items-center gap-0.5
+                      ${newCust
+                        ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                        : `${sc.bg} ${sc.text}`
+                      }`}>
+                      {newCust && <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" />}
+                      <span className="truncate">{b.bookingTime} {b.customerName}</span>
                     </div>
                   );
                 })}
-                {dayBookings.length > 2 && (
-                  <div className="text-[9px] text-slate-400 font-bold pl-0.5">+{dayBookings.length - 2} อื่นๆ</div>
+                {dayBookings.length > 3 && (
+                  <div className="text-[9px] text-slate-400 font-bold pl-0.5">+{dayBookings.length - 3} อื่นๆ</div>
                 )}
               </div>
 
@@ -660,7 +717,15 @@ const CalendarView = ({ bookings, onSelectDate, onAddBooking }) => {
       </div>
 
       {/* Legend */}
-      <div className="px-4 py-2 bg-slate-50 border-t border-slate-100 flex flex-wrap gap-3">
+      <div className="px-4 py-2 bg-slate-50 border-t border-slate-100 flex flex-wrap gap-x-4 gap-y-1.5">
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded-full bg-amber-400 border border-amber-500" />
+          <span className="text-[10px] text-amber-700 font-bold">ลูกค้าใหม่</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded-full bg-blue-400" />
+          <span className="text-[10px] text-slate-500">ลูกค้าเก่า</span>
+        </div>
         {Object.entries(STATUS_CONFIG).map(([label, cfg]) => (
           <div key={label} className="flex items-center gap-1">
             <div className={`w-2 h-2 rounded-full ${cfg.dot}`} />
@@ -679,7 +744,7 @@ const DashboardTab = ({ bookings, patients, isOffline, initialBooking, onPending
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [editBooking, setEditBooking] = useState(null);
   const [addBooking, setAddBooking] = useState(null);
-  const [viewMode, setViewMode] = useState('calendar'); // 'calendar' | 'list'
+  const [viewMode, setViewMode] = useState('calendar');
 
   useEffect(() => {
     if (initialBooking) {
@@ -689,9 +754,16 @@ const DashboardTab = ({ bookings, patients, isOffline, initialBooking, onPending
     }
   }, [initialBooking]);
 
-  const dayBookings = bookings.filter(b => b.bookingDate === reportDate);
+  // ── Sort day bookings by time ──
+  const dayBookings = [...bookings.filter(b => b.bookingDate === reportDate)]
+    .sort((a, b) => (a.bookingTime || '').localeCompare(b.bookingTime || ''));
+
   const byStatus = (s) => s === 'ทั้งหมด' ? dayBookings : dayBookings.filter(b => b.status === s);
   const byCall = (s) => dayBookings.filter(b => (b.callStatus || 'ยังไม่โทรคอนเฟิม') === s);
+
+  // ── NEW/RETURNING customer counts ──
+  const newCustomerBookings = dayBookings.filter(b => isNewCustomer(b, patients));
+  const returningCustomerBookings = dayBookings.filter(b => !isNewCustomer(b, patients));
 
   const handleUpdateStatus = async (id, data) => {
     await updateDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'bookings', id), data);
@@ -727,7 +799,6 @@ const DashboardTab = ({ bookings, patients, isOffline, initialBooking, onPending
           <p className="text-xs text-gray-500">สรุปข้อมูลการนัดหมายตามวันที่เลือก</p>
         </div>
         <div className="flex items-center gap-2">
-          {/* View mode toggle */}
           <div className="flex items-center bg-slate-100 rounded-xl p-1 gap-1">
             <button
               onClick={() => setViewMode('calendar')}
@@ -753,6 +824,7 @@ const DashboardTab = ({ bookings, patients, isOffline, initialBooking, onPending
       {viewMode === 'calendar' && (
         <CalendarView
           bookings={bookings}
+          patients={patients}
           onSelectDate={handleCalendarSelectDate}
           onAddBooking={handleCalendarAddBooking}
         />
@@ -774,6 +846,45 @@ const DashboardTab = ({ bookings, patients, isOffline, initialBooking, onPending
             <button onClick={() => setViewMode('calendar')} className="flex items-center gap-1.5 text-xs text-blue-500 hover:text-blue-700 font-bold bg-blue-50 hover:bg-blue-100 px-3 py-2 rounded-xl transition-colors">
               <Grid className="w-3.5 h-3.5" /> ดูปฏิทิน
             </button>
+          </div>
+
+          {/* ── NEW: Customer Type Cards ── */}
+          <div>
+            <p className="text-[10px] uppercase font-bold text-gray-400 tracking-widest mb-2 px-1 flex items-center gap-1.5">
+              <Users className="w-3.5 h-3.5" /> ประเภทลูกค้าวันนี้
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div
+                onClick={() => setListModal({ title: '✨ ลูกค้าใหม่', items: newCustomerBookings })}
+                className="cursor-pointer hover:-translate-y-1 bg-gradient-to-br from-amber-50 to-orange-100 p-4 sm:p-5 rounded-2xl shadow-sm border border-amber-200 flex items-center gap-4 hover:shadow-lg transition-all group"
+              >
+                <div className="p-3 bg-amber-400 text-white rounded-2xl shadow-sm shrink-0 group-hover:scale-110 transition-transform">
+                  <UserPlus className="w-6 h-6" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] sm:text-xs uppercase font-bold text-amber-600 tracking-wider leading-tight">ลูกค้าใหม่</p>
+                  <h3 className="text-3xl sm:text-4xl font-bold text-amber-800 leading-none mt-0.5">{newCustomerBookings.length}</h3>
+                  <p className="text-[10px] text-amber-500 font-medium mt-0.5">
+                    {dayBookings.length > 0 ? Math.round((newCustomerBookings.length / dayBookings.length) * 100) : 0}% ของวัน
+                  </p>
+                </div>
+              </div>
+              <div
+                onClick={() => setListModal({ title: '⭐ ลูกค้าเก่า', items: returningCustomerBookings })}
+                className="cursor-pointer hover:-translate-y-1 bg-gradient-to-br from-purple-50 to-violet-100 p-4 sm:p-5 rounded-2xl shadow-sm border border-purple-200 flex items-center gap-4 hover:shadow-lg transition-all group"
+              >
+                <div className="p-3 bg-purple-500 text-white rounded-2xl shadow-sm shrink-0 group-hover:scale-110 transition-transform">
+                  <Star className="w-6 h-6" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] sm:text-xs uppercase font-bold text-purple-600 tracking-wider leading-tight">ลูกค้าเก่า</p>
+                  <h3 className="text-3xl sm:text-4xl font-bold text-purple-800 leading-none mt-0.5">{returningCustomerBookings.length}</h3>
+                  <p className="text-[10px] text-purple-500 font-medium mt-0.5">
+                    {dayBookings.length > 0 ? Math.round((returningCustomerBookings.length / dayBookings.length) * 100) : 0}% ของวัน
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Stats */}
@@ -806,14 +917,25 @@ const DashboardTab = ({ bookings, patients, isOffline, initialBooking, onPending
             </div>
           </div>
 
-          {/* Booking list */}
+          {/* Booking list — sorted by time, new customers marked */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="px-5 py-3 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-100 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-blue-600" />
                 <h2 className="font-bold text-gray-800 text-sm">ตารางนัดหมายวันที่ {reportDate}</h2>
               </div>
-              <span className="text-xs font-bold text-blue-600 bg-blue-100 px-3 py-1 rounded-full">{dayBookings.length} รายการ</span>
+              <div className="flex items-center gap-2">
+                {/* Mini legend */}
+                <div className="hidden sm:flex items-center gap-3">
+                  <span className="flex items-center gap-1 text-[10px] font-bold text-amber-600">
+                    <UserPlus className="w-3 h-3" /> ใหม่
+                  </span>
+                  <span className="flex items-center gap-1 text-[10px] font-bold text-purple-600">
+                    <Star className="w-3 h-3" /> เก่า
+                  </span>
+                </div>
+                <span className="text-xs font-bold text-blue-600 bg-blue-100 px-3 py-1 rounded-full">{dayBookings.length} รายการ</span>
+              </div>
             </div>
             {dayBookings.length === 0 ? (
               <div className="p-10 text-center">
@@ -828,16 +950,34 @@ const DashboardTab = ({ bookings, patients, isOffline, initialBooking, onPending
               </div>
             ) : (
               <div className="divide-y divide-slate-50">
-                {[...dayBookings].sort((a, b) => (a.bookingTime || '').localeCompare(b.bookingTime || '')).map(b => {
+                {dayBookings.map((b, idx) => {
                   const sc = STATUS_CONFIG[b.status] || STATUS_CONFIG['ยังไม่มา'];
                   const cc = CALL_CONFIG[b.callStatus || 'ยังไม่โทรคอนเฟิม'];
                   const CallIcon = cc.icon;
+                  const newCust = isNewCustomer(b, patients);
                   return (
-                    <div key={b.id} onClick={() => setSelectedBooking(b)} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 cursor-pointer transition-colors group">
+                    <div key={b.id} onClick={() => setSelectedBooking(b)}
+                      className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors group
+                        ${newCust ? 'hover:bg-amber-50 border-l-2 border-amber-400' : 'hover:bg-slate-50 border-l-2 border-transparent'}`}>
+                      {/* Time slot number */}
+                      <div className="text-slate-300 text-[10px] font-bold w-4 shrink-0 text-center">{idx + 1}</div>
                       <div className={`w-2 h-2 rounded-full shrink-0 ${sc.dot}`} />
                       <div className="text-blue-700 font-bold text-sm w-12 shrink-0">{b.bookingTime || '?'}</div>
                       <div className="flex-grow min-w-0">
-                        <p className="font-bold text-slate-800 text-sm truncate group-hover:text-blue-700 transition-colors">{b.customerName}</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className={`font-bold text-sm truncate transition-colors ${newCust ? 'text-amber-800 group-hover:text-amber-900' : 'text-slate-800 group-hover:text-blue-700'}`}>
+                            {b.customerName}
+                          </p>
+                          {newCust ? (
+                            <span className="shrink-0 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-700 border border-amber-300">
+                              <UserPlus className="w-2.5 h-2.5" /> ใหม่
+                            </span>
+                          ) : (
+                            <span className="shrink-0 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-purple-100 text-purple-600">
+                              <Star className="w-2.5 h-2.5" /> เก่า
+                            </span>
+                          )}
+                        </div>
                         <p className="text-xs text-slate-400 truncate">{b.procedure || '-'}</p>
                       </div>
                       <div className="shrink-0 flex items-center gap-2">
@@ -855,7 +995,7 @@ const DashboardTab = ({ bookings, patients, isOffline, initialBooking, onPending
       )}
 
       {/* Modals */}
-      {listModal && <BookingListModal title={listModal.title} bookings={listModal.items} onClose={() => setListModal(null)} onSelectBooking={b => setSelectedBooking(b)} />}
+      {listModal && <BookingListModal title={listModal.title} bookings={listModal.items} patients={patients} onClose={() => setListModal(null)} onSelectBooking={b => setSelectedBooking(b)} />}
       {selectedBooking && (
         <BookingDetailModal booking={selectedBooking} onClose={() => setSelectedBooking(null)}
           onUpdateStatus={handleUpdateStatus} onUpdateCallStatus={handleUpdateCallStatus}

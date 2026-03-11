@@ -33,6 +33,92 @@ const EMPTY_FORM = (today) => ({
   sale: '', assistant: '', appointedBy: '', doctor: ''
 });
 
+const getRecordImages = (record) => {
+  const before = record.imagesBefore || [];
+  const after = record.imagesAfter || [];
+  if (before.length > 0 || after.length > 0) return [...before, ...after];
+  return record.images || [];
+};
+
+const ImageUploadBlock = ({ type, existingImages, setExistingImages, newPreviews, onRemoveNew, onClickAdd, onLightbox }) => {
+  const total = existingImages.length + newPreviews.length;
+  const isBefore = type === 'before';
+  const label = isBefore ? '🔴 ก่อนทำ' : '🟢 หลังทำ';
+  const border = isBefore ? 'border-red-200' : 'border-green-200';
+  const bg = isBefore ? 'bg-red-50/40' : 'bg-green-50/40';
+  const badge = isBefore ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600';
+  const addBtn = isBefore ? 'border-red-200 hover:bg-red-50' : 'border-green-200 hover:bg-green-50';
+  return (
+    <div className={`rounded-xl border-2 ${border} ${bg} p-3`}>
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-sm font-bold text-slate-700">{label}</span>
+        <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${badge}`}>{total}/5</span>
+      </div>
+      <div className="grid grid-cols-3 gap-1.5">
+        {existingImages.map((src, idx) => (
+          <div key={`ex-${idx}`} className="relative aspect-square rounded-lg overflow-hidden border border-slate-200 group cursor-pointer"
+            onClick={() => onLightbox([...existingImages, ...newPreviews], idx)}>
+            <img src={src} alt="" className="w-full h-full object-cover" />
+            <button type="button" onClick={ev => { ev.stopPropagation(); setExistingImages(p => p.filter((_, i) => i !== idx)); }}
+              className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"><X className="w-2.5 h-2.5" /></button>
+            <div className="absolute bottom-0 left-0 right-0 bg-black/40 text-[9px] text-white text-center py-0.5">เดิม</div>
+          </div>
+        ))}
+        {newPreviews.map((src, idx) => (
+          <div key={`nw-${idx}`} className="relative aspect-square rounded-lg overflow-hidden border-2 border-purple-300 group cursor-pointer"
+            onClick={() => onLightbox([...existingImages, ...newPreviews], existingImages.length + idx)}>
+            <img src={src} alt="" className="w-full h-full object-cover" />
+            <button type="button" onClick={ev => { ev.stopPropagation(); onRemoveNew(type, idx); }}
+              className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"><X className="w-2.5 h-2.5" /></button>
+            <div className="absolute bottom-0 left-0 right-0 bg-purple-500/70 text-[9px] text-white text-center py-0.5">ใหม่</div>
+          </div>
+        ))}
+        {total < 5 && (
+          <div onClick={onClickAdd}
+            className={`aspect-square rounded-lg border-2 border-dashed ${addBtn} flex flex-col items-center justify-center cursor-pointer transition-colors`}>
+            <Camera className="w-4 h-4 text-slate-400 mb-0.5" />
+            <span className="text-[10px] text-slate-500 font-medium">เพิ่มรูป</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const StaffFields = ({ formData, handleInputChange, theme = 'purple' }) => {
+  const ring = theme === 'blue' ? 'focus:border-blue-500 focus:ring focus:ring-blue-200 border-slate-200' : 'focus:border-purple-500 focus:ring focus:ring-purple-200 border-purple-200';
+  const icon = theme === 'blue' ? 'text-blue-400' : 'text-purple-400';
+  const label = theme === 'blue' ? 'text-slate-700' : 'text-purple-900';
+  const head = theme === 'blue' ? 'text-blue-400' : 'text-purple-400';
+  return (
+    <div className="space-y-3">
+      <h3 className={`text-xs font-bold ${head} uppercase tracking-wider border-b pb-1`}>ทีมผู้ดูแล</h3>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className={`block text-sm font-semibold ${label} mb-1`}>Sale <span className="text-red-500">*</span></label>
+          <div className="relative"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><ShoppingBag className={`h-4 w-4 ${icon}`} /></div>
+            <input type="text" name="sale" value={formData.sale} onChange={handleInputChange} required placeholder="ชื่อ Sale" className={`pl-10 w-full rounded-lg border ${ring} px-3 py-2 text-sm text-slate-700 bg-gray-50/50`} /></div>
+        </div>
+        <div>
+          <label className={`block text-sm font-semibold ${label} mb-1`}>ผู้นัด</label>
+          <div className="relative"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><UserCheck className={`h-4 w-4 ${icon}`} /></div>
+            <input type="text" name="appointedBy" value={formData.appointedBy} onChange={handleInputChange} placeholder="ชื่อผู้นัด" className={`pl-10 w-full rounded-lg border ${ring} px-3 py-2 text-sm text-slate-700 bg-gray-50/50`} /></div>
+        </div>
+        <div>
+          <label className={`block text-sm font-semibold ${label} mb-1`}>ผู้ช่วย <span className="text-red-500">*</span></label>
+          <div className="relative"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Users className={`h-4 w-4 ${icon}`} /></div>
+            <input type="text" name="assistant" value={formData.assistant} onChange={handleInputChange} required placeholder="ชื่อผู้ช่วย" className={`pl-10 w-full rounded-lg border ${ring} px-3 py-2 text-sm text-slate-700 bg-gray-50/50`} /></div>
+        </div>
+        <div>
+          <label className={`block text-sm font-semibold ${label} mb-1`}>แพทย์ <span className="text-red-500">*</span></label>
+          <div className="relative"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Stethoscope className={`h-4 w-4 ${icon}`} /></div>
+            <input type="text" name="doctor" value={formData.doctor} onChange={handleInputChange} required placeholder="ชื่อแพทย์" className={`pl-10 w-full rounded-lg border ${ring} px-3 py-2 text-sm text-slate-700 bg-gray-50/50`} /></div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function App() {
   const [user, setUser] = useState(null);
   const [records, setRecords] = useState([]);
@@ -48,11 +134,21 @@ export default function App() {
   const [recordToDelete, setRecordToDelete] = useState(null);
   const [alertMessage, setAlertMessage] = useState('');
   const [editingRecord, setEditingRecord] = useState(null);
-  const [editExistingImages, setEditExistingImages] = useState([]);
-  const [lightbox, setLightbox] = useState(null); // { images: [...], index: N }
+  const [lightbox, setLightbox] = useState(null);
   const touchStartX = useRef(null);
+  const fileBeforeRef = useRef(null);
+  const fileAfterRef = useRef(null);
 
-  // Keyboard navigation for lightbox
+  const [beforeFiles, setBeforeFiles] = useState([]);
+  const [beforePreviews, setBeforePreviews] = useState([]);
+  const [afterFiles, setAfterFiles] = useState([]);
+  const [afterPreviews, setAfterPreviews] = useState([]);
+  const [editBeforeImages, setEditBeforeImages] = useState([]);
+  const [editAfterImages, setEditAfterImages] = useState([]);
+
+  const today = new Date().toISOString().split('T')[0];
+  const [formData, setFormData] = useState(EMPTY_FORM(today));
+
   useEffect(() => {
     const handleKey = (e) => {
       if (!lightbox) return;
@@ -65,20 +161,11 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKey);
   }, [lightbox]);
 
-  const fileInputRef = useRef(null);
-  const modalFileInputRef = useRef(null);
-
-  const today = new Date().toISOString().split('T')[0];
-  const [formData, setFormData] = useState(EMPTY_FORM(today));
-  const [imageFiles, setImageFiles] = useState([]);
-  const [imagePreviews, setImagePreviews] = useState([]);
-
   useEffect(() => {
     if (!auth) { setDbStatus('ไม่พบการตั้งค่า Firebase'); setLoading(false); return; }
     const initAuth = async () => {
       try {
         await signInAnonymously(auth);
-        setDbStatus('ยืนยันตัวตนสำเร็จ กำลังดึงข้อมูล...');
       } catch (error) {
         setDbStatus('เชื่อมต่อ Auth ไม่สำเร็จ (โหมดออฟไลน์)');
         setAlertMessage(`ระบบไม่สามารถเชื่อมต่อการยืนยันตัวตนได้\nกรุณาเข้าไปที่ Firebase Console > Authentication เพื่อเปิดใช้งาน "Anonymous"\n\nรหัสข้อผิดพลาด: ${error.message}`);
@@ -125,7 +212,7 @@ export default function App() {
   useEffect(() => {
     if (selectedPatientHN) {
       const exists = records.some(r => r.hn === selectedPatientHN);
-      if (!exists) { setSelectedPatientHN(null); }
+      if (!exists) setSelectedPatientHN(null);
     }
   }, [records, selectedPatientHN]);
 
@@ -169,51 +256,63 @@ export default function App() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleImageChange = (e) => {
+  const handleImageAdd = (e, type) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
     const validFiles = files.filter(f => f.type.startsWith('image/'));
-    const currentTotal = (editingRecord ? editExistingImages.length : 0) + imageFiles.length;
-    if (currentTotal + validFiles.length > 5) { setAlertMessage('สามารถอัปโหลดได้สูงสุด 5 รูปต่อ 1 รายการ'); return; }
-    setImageFiles(prev => [...prev, ...validFiles]);
-    validFiles.forEach(file => { const reader = new FileReader(); reader.onloadend = () => setImagePreviews(prev => [...prev, reader.result]); reader.readAsDataURL(file); });
-    if (fileInputRef.current) fileInputRef.current.value = '';
-    if (modalFileInputRef.current) modalFileInputRef.current.value = '';
+    const currentCount = type === 'before'
+      ? (editingRecord ? editBeforeImages.length : 0) + beforeFiles.length
+      : (editingRecord ? editAfterImages.length : 0) + afterFiles.length;
+    if (currentCount + validFiles.length > 5) { setAlertMessage('สามารถอัปโหลดได้สูงสุด 5 รูปต่อประเภท'); return; }
+    if (type === 'before') {
+      setBeforeFiles(prev => [...prev, ...validFiles]);
+      validFiles.forEach(f => { const r = new FileReader(); r.onloadend = () => setBeforePreviews(prev => [...prev, r.result]); r.readAsDataURL(f); });
+    } else {
+      setAfterFiles(prev => [...prev, ...validFiles]);
+      validFiles.forEach(f => { const r = new FileReader(); r.onloadend = () => setAfterPreviews(prev => [...prev, r.result]); r.readAsDataURL(f); });
+    }
+    e.target.value = '';
   };
 
-  const removeNewImage = (index) => { setImageFiles(prev => prev.filter((_, i) => i !== index)); setImagePreviews(prev => prev.filter((_, i) => i !== index)); };
-  const removeExistingImage = (index) => { setEditExistingImages(prev => prev.filter((_, i) => i !== index)); };
+  const removeNewImage = (type, index) => {
+    if (type === 'before') { setBeforeFiles(p => p.filter((_, i) => i !== index)); setBeforePreviews(p => p.filter((_, i) => i !== index)); }
+    else { setAfterFiles(p => p.filter((_, i) => i !== index)); setAfterPreviews(p => p.filter((_, i) => i !== index)); }
+  };
 
-  const staffRequired = !formData.sale || !formData.assistant || !formData.appointedBy || !formData.doctor;
+  const resetImages = () => {
+    setBeforeFiles([]); setBeforePreviews([]);
+    setAfterFiles([]); setAfterPreviews([]);
+    setEditBeforeImages([]); setEditAfterImages([]);
+  };
+
+  const staffRequired = !formData.sale || !formData.assistant || !formData.doctor;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.fullName || !formData.hn || !formData.service || !formData.serviceDate || staffRequired) return;
     setSubmitting(true);
     try {
-      const base64Images = await Promise.all(imageFiles.map(file => compressImage(file)));
+      const b64Before = await Promise.all(beforeFiles.map(f => compressImage(f)));
+      const b64After = await Promise.all(afterFiles.map(f => compressImage(f)));
       const newRecord = {
         fullName: formData.fullName, hn: formData.hn, phone: formData.phone || '',
         serviceDate: formData.serviceDate, service: formData.service,
         price: formData.price ? Number(formData.price) : null,
         note: formData.note || '',
-        sale: formData.sale || '',
-        assistant: formData.assistant || '',
-        appointedBy: formData.appointedBy || '',
-        doctor: formData.doctor || '',
-        images: base64Images,
+        sale: formData.sale || '', assistant: formData.assistant || '',
+        appointedBy: formData.appointedBy || '', doctor: formData.doctor || '',
+        imagesBefore: b64Before, imagesAfter: b64After, images: [],
         createdBy: user?.uid || 'anonymous',
         createdAt: db && !isOfflineMode ? serverTimestamp() : new Date()
       };
       if (db && !isOfflineMode) {
-        const recordsRef = collection(db, 'artifacts', appId, 'public', 'data', 'patient_records');
-        await addDoc(recordsRef, newRecord);
+        await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'patient_records'), newRecord);
       } else {
         setAlertMessage("ขณะนี้ระบบทำงานในโหมดออฟไลน์ ข้อมูลจะไม่ได้ถูกส่งขึ้น Firebase ถาวร");
         setRecords(prev => [{ ...newRecord, id: 'local-' + Date.now(), createdAt: new Date() }, ...prev]);
       }
       const savedHN = formData.hn;
-      setFormData(EMPTY_FORM(today)); setImageFiles([]); setImagePreviews([]);
+      setFormData(EMPTY_FORM(today)); resetImages();
       if (followUpCustomer) { setFollowUpCustomer(null); setActiveTab('search'); setSelectedPatientHN(savedHN); }
       else { setActiveTab('search'); }
     } catch (error) { setAlertMessage(`เกิดข้อผิดพลาด: ${error.message}`); }
@@ -225,35 +324,35 @@ export default function App() {
     if (!formData.fullName || !formData.hn || !formData.service || !formData.serviceDate || staffRequired) return;
     setSubmitting(true);
     try {
-      const base64NewImages = await Promise.all(imageFiles.map(file => compressImage(file)));
-      const finalImages = [...editExistingImages, ...base64NewImages];
+      const b64Before = await Promise.all(beforeFiles.map(f => compressImage(f)));
+      const b64After = await Promise.all(afterFiles.map(f => compressImage(f)));
       const updatedRecord = {
         fullName: formData.fullName, hn: formData.hn, phone: formData.phone || '',
         serviceDate: formData.serviceDate, service: formData.service,
         price: formData.price ? Number(formData.price) : null,
         note: formData.note || '',
-        sale: formData.sale || '',
-        assistant: formData.assistant || '',
-        appointedBy: formData.appointedBy || '',
-        doctor: formData.doctor || '',
-        images: finalImages,
+        sale: formData.sale || '', assistant: formData.assistant || '',
+        appointedBy: formData.appointedBy || '', doctor: formData.doctor || '',
+        imagesBefore: [...editBeforeImages, ...b64Before],
+        imagesAfter: [...editAfterImages, ...b64After],
+        images: [],
       };
       if (db && !isOfflineMode) {
-        const recordRef = doc(db, 'artifacts', appId, 'public', 'data', 'patient_records', editingRecord.id);
-        await updateDoc(recordRef, updatedRecord);
+        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'patient_records', editingRecord.id), updatedRecord);
       } else { setRecords(prev => prev.map(r => r.id === editingRecord.id ? { ...r, ...updatedRecord } : r)); }
       closeEditModal(); setAlertMessage("บันทึกการแก้ไขข้อมูลสำเร็จ ✓");
     } catch (error) { setAlertMessage("เกิดข้อผิดพลาดในการอัปเดตข้อมูล: " + error.message); }
     finally { setSubmitting(false); }
   };
 
-  const handleDeleteClick = (id) => { setRecordToDelete(id); };
+  const handleDeleteClick = (id) => setRecordToDelete(id);
 
   const confirmDelete = async () => {
     if (!recordToDelete) return;
     try {
-      if (String(recordToDelete).startsWith('local-') || isOfflineMode || !db) { setRecords(prev => prev.filter(r => r.id !== recordToDelete)); }
-      else { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'patient_records', recordToDelete)); }
+      if (String(recordToDelete).startsWith('local-') || isOfflineMode || !db) {
+        setRecords(prev => prev.filter(r => r.id !== recordToDelete));
+      } else { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'patient_records', recordToDelete)); }
     } catch (error) {
       if (error.code === 'permission-denied') setAlertMessage("ไม่สามารถลบข้อมูลได้เนื่องจากติดสิทธิ์ (Permission Denied) ใน Firebase");
     } finally { setRecordToDelete(null); }
@@ -268,27 +367,28 @@ export default function App() {
       sale: record.sale || '', assistant: record.assistant || '',
       appointedBy: record.appointedBy || '', doctor: record.doctor || ''
     });
-    setEditExistingImages(record.images || []);
-    setImageFiles([]); setImagePreviews([]);
+    setEditBeforeImages(record.imagesBefore || record.images || []);
+    setEditAfterImages(record.imagesAfter || []);
+    setBeforeFiles([]); setBeforePreviews([]);
+    setAfterFiles([]); setAfterPreviews([]);
   };
 
   const closeEditModal = () => {
     setEditingRecord(null);
     setFormData(EMPTY_FORM(today));
-    setImageFiles([]); setImagePreviews([]); setEditExistingImages([]);
+    resetImages();
   };
 
   const handleAddFollowUp = (patient) => {
     setFollowUpCustomer({ fullName: patient.fullName, hn: patient.hn, phone: patient.phone || '' });
     setFormData({ ...EMPTY_FORM(today), fullName: patient.fullName, hn: patient.hn, phone: patient.phone || '' });
-    setImageFiles([]); setImagePreviews([]);
+    resetImages();
   };
 
   const formatDisplayDate = (dateString) => {
     if (!dateString) return '';
     return new Date(dateString).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' });
   };
-
   const formatCurrency = (amount) => new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(amount);
 
   if (loading) {
@@ -307,7 +407,7 @@ export default function App() {
 
       {isOfflineMode && (
         <div className="bg-red-500 text-white text-sm font-bold px-4 py-2 text-center">
-          ⚠️ ข้อมูลไม่ได้ถูกจัดเก็บในฐานข้อมูลจริง (Offline Mode) — กรุณาเช็ค Rules หรือ Authentication ใน Firebase
+          ⚠️ ข้อมูลไม่ได้ถูกจัดเก็บในฐานข้อมูลจริง (Offline Mode)
         </div>
       )}
 
@@ -341,158 +441,82 @@ export default function App() {
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
-        {/* ── View: Add New Record ── */}
+        <input type="file" ref={fileBeforeRef} onChange={e => handleImageAdd(e, 'before')} accept="image/*" multiple className="hidden" />
+        <input type="file" ref={fileAfterRef} onChange={e => handleImageAdd(e, 'after')} accept="image/*" multiple className="hidden" />
+
+        {/* ── Add New Record ── */}
         {activeTab === 'add' && (
           <div className="bg-white rounded-2xl shadow-xl border border-purple-100 overflow-hidden max-w-2xl mx-auto">
-            <div className="bg-purple-50 border-b border-purple-100 px-6 py-4 flex items-center">
+            <div className="bg-purple-50 border-b border-purple-100 px-6 py-4">
               <h2 className="text-lg font-bold text-purple-900 flex items-center"><FileEdit className="w-5 h-5 mr-2 text-purple-600" /> บันทึกประวัติใหม่</h2>
             </div>
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              {/* ข้อมูลลูกค้า */}
               <div className="space-y-3">
-                <h3 className="text-xs font-bold text-purple-400 uppercase tracking-wider mb-2 border-b pb-1">ข้อมูลลูกค้า</h3>
+                <h3 className="text-xs font-bold text-purple-400 uppercase tracking-wider border-b pb-1">ข้อมูลลูกค้า</h3>
                 <div>
                   <label className="block text-sm font-semibold text-purple-900 mb-1">ชื่อ-นามสกุล <span className="text-red-500">*</span></label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><User className="h-4 w-4 text-purple-400" /></div>
-                    <input type="text" name="fullName" value={formData.fullName} onChange={handleInputChange} required placeholder="เช่น สมหญิง สวยงาม" className="pl-10 w-full rounded-lg border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2 text-sm text-slate-700 bg-gray-50/50" />
-                  </div>
+                  <div className="relative"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><User className="h-4 w-4 text-purple-400" /></div>
+                    <input type="text" name="fullName" value={formData.fullName} onChange={handleInputChange} required placeholder="เช่น สมหญิง สวยงาม" className="pl-10 w-full rounded-lg border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2 text-sm text-slate-700 bg-gray-50/50" /></div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-sm font-semibold text-purple-900 mb-1">เลข HN <span className="text-red-500">*</span></label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Hash className="h-4 w-4 text-purple-400" /></div>
-                      <input type="text" name="hn" value={formData.hn} onChange={handleInputChange} required placeholder="HN12345" className="pl-10 w-full rounded-lg border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2 text-sm text-slate-700 bg-gray-50/50" />
-                    </div>
+                    <div className="relative"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Hash className="h-4 w-4 text-purple-400" /></div>
+                      <input type="text" name="hn" value={formData.hn} onChange={handleInputChange} required placeholder="HN12345" className="pl-10 w-full rounded-lg border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2 text-sm text-slate-700 bg-gray-50/50" /></div>
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-purple-900 mb-1">เบอร์โทรศัพท์</label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Phone className="h-4 w-4 text-purple-400" /></div>
-                      <input type="tel" name="phone" value={formData.phone} onChange={handleInputChange} placeholder="08X-XXX-XXXX" className="pl-10 w-full rounded-lg border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2 text-sm text-slate-700 bg-gray-50/50" />
-                    </div>
+                    <div className="relative"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Phone className="h-4 w-4 text-purple-400" /></div>
+                      <input type="tel" name="phone" value={formData.phone} onChange={handleInputChange} placeholder="08X-XXX-XXXX" className="pl-10 w-full rounded-lg border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2 text-sm text-slate-700 bg-gray-50/50" /></div>
                   </div>
                 </div>
               </div>
-
-              {/* ข้อมูลบริการ */}
               <div className="space-y-3 pt-2">
-                <h3 className="text-xs font-bold text-purple-400 uppercase tracking-wider mb-2 border-b pb-1">ข้อมูลเข้ารับบริการ</h3>
+                <h3 className="text-xs font-bold text-purple-400 uppercase tracking-wider border-b pb-1">ข้อมูลเข้ารับบริการ</h3>
                 <div>
                   <label className="block text-sm font-semibold text-purple-900 mb-1">วันที่เข้ารับบริการ <span className="text-red-500">*</span></label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Calendar className="h-4 w-4 text-purple-400" /></div>
-                    <input type="date" name="serviceDate" value={formData.serviceDate} onChange={handleInputChange} required className="pl-10 w-full rounded-lg border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2 text-sm text-slate-700 bg-gray-50/50" />
-                  </div>
+                  <div className="relative"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Calendar className="h-4 w-4 text-purple-400" /></div>
+                    <input type="date" name="serviceDate" value={formData.serviceDate} onChange={handleInputChange} required className="pl-10 w-full rounded-lg border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2 text-sm text-slate-700 bg-gray-50/50" /></div>
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-purple-900 mb-1">รายการหัตถการ <span className="text-red-500">*</span></label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><FileText className="h-4 w-4 text-purple-400" /></div>
-                    <input type="text" name="service" value={formData.service} onChange={handleInputChange} required placeholder="เช่น ฉีดโบท็อกซ์กราม, ฟิลเลอร์คาง" className="pl-10 w-full rounded-lg border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2 text-sm text-slate-700 bg-gray-50/50" />
-                  </div>
+                  <div className="relative"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><FileText className="h-4 w-4 text-purple-400" /></div>
+                    <input type="text" name="service" value={formData.service} onChange={handleInputChange} required placeholder="เช่น ฉีดโบท็อกซ์กราม, ฟิลเลอร์คาง" className="pl-10 w-full rounded-lg border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2 text-sm text-slate-700 bg-gray-50/50" /></div>
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-purple-900 mb-1">ราคา (บาท)</label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><DollarSign className="h-4 w-4 text-purple-400" /></div>
-                    <input type="number" name="price" value={formData.price} onChange={handleInputChange} min="0" placeholder="ไม่ระบุ" className="pl-10 w-full rounded-lg border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2 text-sm text-slate-700 bg-gray-50/50" />
-                  </div>
+                  <div className="relative"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><DollarSign className="h-4 w-4 text-purple-400" /></div>
+                    <input type="number" name="price" value={formData.price} onChange={handleInputChange} min="0" placeholder="ไม่ระบุ" className="pl-10 w-full rounded-lg border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2 text-sm text-slate-700 bg-gray-50/50" /></div>
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-purple-900 mb-1">หมายเหตุเพิ่มเติม</label>
-                  <textarea name="note" value={formData.note} onChange={handleInputChange} rows="2" placeholder="เช่น ลูกค้าแพ้ยาชา, มัดจำแล้ว..." className="w-full rounded-lg border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2 text-sm text-slate-700 bg-gray-50/50 resize-none"></textarea>
+                  <textarea name="note" value={formData.note} onChange={handleInputChange} rows="2" placeholder="เช่น ลูกค้าแพ้ยาชา, มัดจำแล้ว..." className="w-full rounded-lg border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2 text-sm text-slate-700 bg-gray-50/50 resize-none" />
                 </div>
               </div>
-
-              {/* ── ทีมผู้ดูแล (4 ฟิลด์ใหม่) ── */}
-              <div className="space-y-3 pt-2">
-                <h3 className="text-xs font-bold text-purple-400 uppercase tracking-wider mb-2 border-b pb-1">ทีมผู้ดูแล</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-sm font-semibold text-purple-900 mb-1">Sale <span className="text-red-500">*</span></label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><ShoppingBag className="h-4 w-4 text-purple-400" /></div>
-                      <input type="text" name="sale" value={formData.sale} onChange={handleInputChange} required placeholder="ชื่อ Sale" className="pl-10 w-full rounded-lg border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2 text-sm text-slate-700 bg-gray-50/50" />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-purple-900 mb-1">ผู้นัด <span className="text-red-500">*</span></label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><UserCheck className="h-4 w-4 text-purple-400" /></div>
-                      <input type="text" name="appointedBy" value={formData.appointedBy} onChange={handleInputChange} required placeholder="ชื่อผู้นัด" className="pl-10 w-full rounded-lg border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2 text-sm text-slate-700 bg-gray-50/50" />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-purple-900 mb-1">ผู้ช่วย <span className="text-red-500">*</span></label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Users className="h-4 w-4 text-purple-400" /></div>
-                      <input type="text" name="assistant" value={formData.assistant} onChange={handleInputChange} required placeholder="ชื่อผู้ช่วย" className="pl-10 w-full rounded-lg border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2 text-sm text-slate-700 bg-gray-50/50" />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-purple-900 mb-1">แพทย์ <span className="text-red-500">*</span></label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Stethoscope className="h-4 w-4 text-purple-400" /></div>
-                      <input type="text" name="doctor" value={formData.doctor} onChange={handleInputChange} required placeholder="ชื่อแพทย์" className="pl-10 w-full rounded-lg border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2 text-sm text-slate-700 bg-gray-50/50" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* รูปภาพ */}
+              <StaffFields theme="purple" formData={formData} handleInputChange={handleInputChange} />
               <div className="pt-2">
-                <div className="flex justify-between items-center mb-2">
-                  <label className="block text-sm font-semibold text-purple-900">รูปภาพประกอบ (สูงสุด 5 รูป)</label>
-                  <span className="text-xs text-purple-500 font-medium">{imageFiles.length}/5</span>
+                <h3 className="text-xs font-bold text-purple-400 uppercase tracking-wider border-b pb-1 mb-3">รูปภาพก่อน / หลังทำ</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <ImageUploadBlock type="before" existingImages={[]} setExistingImages={() => {}} newPreviews={beforePreviews} onRemoveNew={removeNewImage} onClickAdd={() => fileBeforeRef.current?.click()} onLightbox={(imgs, idx) => setLightbox({ images: imgs, index: idx })} />
+                  <ImageUploadBlock type="after" existingImages={[]} setExistingImages={() => {}} newPreviews={afterPreviews} onRemoveNew={removeNewImage} onClickAdd={() => fileAfterRef.current?.click()} onLightbox={(imgs, idx) => setLightbox({ images: imgs, index: idx })} />
                 </div>
-                {imagePreviews.length > 0 ? (
-                  <div className="grid grid-cols-3 gap-2 mb-3">
-                    {imagePreviews.map((src, idx) => (
-                      <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border border-purple-200 group">
-                        <img src={src} alt="preview" className="w-full h-full object-cover" />
-                        <button type="button" onClick={() => removeNewImage(idx)} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"><X className="w-3 h-3" /></button>
-                      </div>
-                    ))}
-                    {imagePreviews.length < 5 && (
-                      <div onClick={() => fileInputRef.current?.click()} className="aspect-square rounded-lg border-2 border-dashed border-purple-300 bg-purple-50 flex flex-col items-center justify-center cursor-pointer hover:bg-purple-100">
-                        <Camera className="w-5 h-5 text-purple-400 mb-1" /><span className="text-[10px] text-purple-500 font-medium">เพิ่มรูป</span>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div onClick={() => fileInputRef.current?.click()} className="border-2 border-dashed rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition-colors border-purple-200 hover:border-purple-400 bg-purple-50/30">
-                    <div className="py-4 text-center">
-                      <div className="bg-purple-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2"><ImageIcon className="w-6 h-6 text-purple-500" /></div>
-                      <p className="text-sm font-medium text-purple-700">คลิกเพื่ออัปโหลดรูปภาพ</p>
-                      <p className="text-xs text-purple-400 mt-1">รองรับหลายรูป (ระบบจะบีบอัดให้อัตโนมัติ)</p>
-                    </div>
-                  </div>
-                )}
-                <input type="file" ref={fileInputRef} onChange={handleImageChange} accept="image/*" multiple className="hidden" />
               </div>
-
-              <button type="submit" disabled={submitting || !formData.fullName || !formData.hn || !formData.service || !formData.serviceDate || !formData.sale || !formData.assistant || !formData.appointedBy || !formData.doctor}
-                className={`w-full py-3 px-4 mt-4 rounded-xl text-white font-bold shadow-md transition-all flex justify-center items-center ${(submitting || !formData.fullName || !formData.hn || !formData.service || !formData.serviceDate || !formData.sale || !formData.assistant || !formData.appointedBy || !formData.doctor) ? 'bg-purple-300 cursor-not-allowed' : 'bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600 hover:shadow-lg active:scale-[0.98]'}`}>
+              <button type="submit" disabled={submitting || !formData.fullName || !formData.hn || !formData.service || !formData.serviceDate || staffRequired}
+                className={`w-full py-3 px-4 mt-2 rounded-xl text-white font-bold shadow-md transition-all flex justify-center items-center ${(submitting || !formData.fullName || !formData.hn || !formData.service || !formData.serviceDate || staffRequired) ? 'bg-purple-300 cursor-not-allowed' : 'bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600 hover:shadow-lg active:scale-[0.98]'}`}>
                 {submitting ? <><Sparkles className="animate-spin w-5 h-5 mr-2" /> กำลังส่งข้อมูล...</> : 'บันทึกประวัติ'}
               </button>
             </form>
           </div>
         )}
 
-        {/* ── View: Search & List ── */}
+        {/* ── Search & List ── */}
         {activeTab === 'search' && !selectedPatientHN && (
           <div className="max-w-4xl mx-auto">
-            <div className="bg-white p-4 rounded-2xl shadow-sm border border-purple-100 mb-6 flex items-center">
+            <div className="bg-white p-4 rounded-2xl shadow-sm border border-purple-100 mb-6">
               <div className="relative w-full">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><Search className="h-5 w-5 text-purple-400" /></div>
                 <input type="text" placeholder="ค้นหาลูกค้าด้วย ชื่อ, เบอร์โทรศัพท์ หรือ รหัส HN..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-12 w-full rounded-xl border border-purple-100 bg-purple-50/50 focus:bg-white focus:border-purple-400 focus:ring-2 focus:ring-purple-200 transition-all px-4 py-3.5 text-slate-700" />
-                {searchQuery && (
-                  <button onClick={() => setSearchQuery('')} className="absolute inset-y-0 right-0 pr-4 flex items-center text-purple-400 hover:text-purple-600">
-                    <X className="h-5 w-5 bg-purple-100 rounded-full p-0.5" />
-                  </button>
-                )}
+                {searchQuery && <button onClick={() => setSearchQuery('')} className="absolute inset-y-0 right-0 pr-4 flex items-center text-purple-400 hover:text-purple-600"><X className="h-5 w-5 bg-purple-100 rounded-full p-0.5" /></button>}
               </div>
             </div>
             <div className="mb-5 flex items-center justify-between px-1">
@@ -503,13 +527,13 @@ export default function App() {
               <div className="bg-white rounded-2xl border border-dashed border-purple-200 p-12 text-center shadow-sm">
                 <div className="bg-purple-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4"><User className="w-10 h-10 text-purple-300" /></div>
                 <h3 className="text-lg font-bold text-purple-800 mb-1">{searchQuery ? 'ไม่พบชื่อลูกค้ารายนี้' : 'ยังไม่มีข้อมูลลูกค้า'}</h3>
-                <p className="text-purple-500 text-sm">{searchQuery ? 'ลองเปลี่ยนคำค้นหาเป็นชื่อ หรือ รหัส HN อื่น' : 'กดแท็บ "+ บันทึกประวัติใหม่" ด้านบนเพื่อเพิ่มข้อมูลลูกค้าคนแรก'}</p>
+                <p className="text-purple-500 text-sm">{searchQuery ? 'ลองเปลี่ยนคำค้นหา' : 'กดแท็บ "+ บันทึกประวัติใหม่" เพื่อเพิ่มข้อมูลลูกค้าคนแรก'}</p>
               </div>
             ) : (
               <div className="space-y-2">
                 {filteredPatients.map((patient) => {
                   const totalSpend = patient.records.reduce((sum, r) => sum + (r.price || 0), 0);
-                  const totalImages = patient.records.reduce((sum, r) => sum + (r.images?.length || 0), 0);
+                  const totalImages = patient.records.reduce((sum, r) => sum + getRecordImages(r).length, 0);
                   return (
                     <div key={patient.hn} onClick={() => setPatientModalHN(patient.hn)} className="bg-white rounded-2xl border border-slate-100 hover:border-purple-300 hover:shadow-md transition-all cursor-pointer active:scale-[0.99] group">
                       <div className="px-4 py-3.5 flex items-center gap-3">
@@ -540,23 +564,39 @@ export default function App() {
           </div>
         )}
 
-        {/* ── MODAL: Patient Gallery ── */}
+        {/* ── Patient Modal ── */}
         {patientModalHN && modalPatient && (() => {
           const allSortedRecords = [...modalPatient.records].sort((a, b) => new Date(b.serviceDate) - new Date(a.serviceDate));
-          const allImages = allSortedRecords.flatMap(r => (r.images || []).map(img => ({ src: img, record: r })));
+          const allBefore = allSortedRecords.flatMap(r => (r.imagesBefore || r.images || []).map(src => ({ src, record: r })));
+          const allAfter = allSortedRecords.flatMap(r => (r.imagesAfter || []).map(src => ({ src, record: r })));
           const totalSpend = modalPatient.records.reduce((sum, r) => sum + (r.price || 0), 0);
+          const totalImages = allBefore.length + allAfter.length;
+
+          const CarouselRow = ({ items, label, labelColor }) => items.length === 0 ? null : (
+            <div className="mb-2">
+              <p className={`text-[11px] font-bold uppercase tracking-wider mb-1.5 ${labelColor}`}>{label} · {items.length} รูป</p>
+              <div className="flex gap-1.5 overflow-x-auto pb-1 snap-x snap-mandatory scroll-smooth" style={{ scrollbarWidth: 'none' }}>
+                {items.map(({ src, record }, i) => (
+                  <div key={i} className="relative shrink-0 w-24 h-24 sm:w-32 sm:h-32 rounded-xl overflow-hidden cursor-pointer group/thumb bg-slate-100 snap-start"
+                    onClick={() => setLightbox({ images: items.map(x => x.src), index: i })}>
+                    <img src={src} alt="" className="w-full h-full object-cover group-hover/thumb:scale-110 transition-transform duration-300" loading="lazy" />
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent px-1.5 py-1">
+                      <p className="text-white text-[9px] font-semibold truncate">{formatDisplayDate(record.serviceDate)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+
           return (
             <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center" onClick={() => setPatientModalHN(null)}>
               <div className="bg-[#f8f7fc] w-full sm:max-w-3xl sm:rounded-3xl rounded-t-3xl shadow-2xl flex flex-col overflow-hidden" style={{ maxHeight: '92vh' }} onClick={e => e.stopPropagation()}>
-
-                {/* Header */}
                 <div className="bg-gradient-to-br from-purple-900 via-purple-700 to-purple-500 px-5 pt-5 pb-4 shrink-0">
                   <div className="w-10 h-1 bg-white/30 rounded-full mx-auto mb-4 sm:hidden" />
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center border border-white/20 shadow-inner shrink-0">
-                        <User className="w-7 h-7 text-white" />
-                      </div>
+                      <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center border border-white/20 shrink-0"><User className="w-7 h-7 text-white" /></div>
                       <div>
                         <h2 className="text-xl font-bold text-white leading-tight">{modalPatient.fullName}</h2>
                         <div className="flex flex-wrap items-center gap-x-3 mt-0.5">
@@ -566,94 +606,80 @@ export default function App() {
                         <div className="flex items-center gap-3 mt-2">
                           <span className="bg-white/15 text-white text-xs font-semibold px-2.5 py-1 rounded-lg">{modalPatient.count} ครั้ง</span>
                           {totalSpend > 0 && <span className="bg-green-400/20 text-green-200 text-xs font-bold px-2.5 py-1 rounded-lg border border-green-400/20">รวม {formatCurrency(totalSpend)}</span>}
-                          {allImages.length > 0 && <span className="bg-white/15 text-white text-xs font-semibold px-2.5 py-1 rounded-lg flex items-center"><ImageIcon className="w-3 h-3 mr-1" />{allImages.length} รูป</span>}
+                          {totalImages > 0 && <span className="bg-white/15 text-white text-xs font-semibold px-2.5 py-1 rounded-lg flex items-center"><ImageIcon className="w-3 h-3 mr-1" />{totalImages} รูป</span>}
                         </div>
                       </div>
                     </div>
-                    <button onClick={() => setPatientModalHN(null)} className="p-2 hover:bg-white/20 rounded-full transition-colors shrink-0 mt-0.5"><X className="w-5 h-5 text-white" /></button>
+                    <button onClick={() => setPatientModalHN(null)} className="p-2 hover:bg-white/20 rounded-full transition-colors shrink-0"><X className="w-5 h-5 text-white" /></button>
                   </div>
                   <button onClick={() => { handleAddFollowUp(modalPatient); setPatientModalHN(null); }} className="w-full mt-3 bg-white text-purple-700 hover:bg-purple-50 text-sm font-bold py-2.5 rounded-xl transition-colors flex items-center justify-center shadow-sm">
                     <Plus className="w-4 h-4 mr-2" /> เพิ่มประวัติหัตถการใหม่
                   </button>
                 </div>
-
-                {/* Body */}
                 <div className="overflow-y-auto flex-grow">
-                  {allImages.length > 0 && (
+                  {(allBefore.length > 0 || allAfter.length > 0) && (
                     <div className="p-4 pb-2">
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center"><ImageIcon className="w-3.5 h-3.5 mr-1.5 text-purple-400" />คลังรูปภาพทั้งหมด · {allImages.length} รูป</p>
-                      {/* Horizontal scroll carousel */}
-                      <div className="relative">
-                        <div
-                          className="flex gap-2 overflow-x-auto pb-2 snap-x snap-mandatory scroll-smooth"
-                          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-                        >
-                          {allImages.map(({ src, record }, i) => (
-                            <div
-                              key={i}
-                              className="relative shrink-0 w-28 h-28 sm:w-36 sm:h-36 rounded-xl overflow-hidden cursor-pointer group/thumb bg-slate-100 snap-start"
-                              onClick={() => setLightbox({ images: allImages.map(x => x.src), index: i })}
-                            >
-                              <img src={src} alt={`รูป ${i + 1}`} className="w-full h-full object-cover group-hover/thumb:scale-110 transition-transform duration-300" loading="lazy" />
-                              <div className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/20 transition-colors" />
-                              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent px-1.5 py-1.5">
-                                <p className="text-white text-[9px] font-semibold leading-tight truncate">{formatDisplayDate(record.serviceDate)}</p>
-                              </div>
-                              <div className="absolute top-1.5 right-1.5 bg-black/40 text-white text-[9px] font-bold px-1 py-0.5 rounded-md">{i + 1}/{allImages.length}</div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center"><ImageIcon className="w-3.5 h-3.5 mr-1.5 text-purple-400" />คลังรูปภาพทั้งหมด</p>
+                      <CarouselRow items={allBefore} label="🔴 ก่อนทำ" labelColor="text-red-500" />
+                      <CarouselRow items={allAfter} label="🟢 หลังทำ" labelColor="text-green-600" />
                     </div>
                   )}
-
-                  {/* Timeline */}
                   <div className="px-4 pt-3 pb-5">
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center"><Clock className="w-3.5 h-3.5 mr-1.5 text-purple-400" />ประวัติการรับบริการ · {modalPatient.count} ครั้ง</p>
                     <div className="space-y-2">
-                      {allSortedRecords.map((record, idx) => (
-                        <div key={record.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                          <div className="flex items-start gap-3 px-4 py-3">
-                            {record.images && record.images.length > 0 ? (
-                              <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 cursor-pointer relative group/mini" onClick={() => setLightbox({ images: record.images, index: 0 })}>
-                                <img src={record.images[0]} alt="" className="w-full h-full object-cover group-hover/mini:scale-110 transition-transform duration-200" />
-                                {record.images.length > 1 && <div className="absolute inset-0 bg-black/40 flex items-center justify-center"><span className="text-white text-[10px] font-bold">+{record.images.length - 1}</span></div>}
-                              </div>
-                            ) : (
-                              <div className="w-14 h-14 rounded-xl bg-purple-50 flex items-center justify-center shrink-0 border border-purple-100"><ImageIcon className="w-5 h-5 text-purple-200" /></div>
-                            )}
-                            <div className="flex-grow min-w-0">
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="min-w-0">
-                                  <div className="flex items-center gap-1.5 mb-0.5">
-                                    {idx === 0 && <span className="bg-purple-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md shrink-0">ล่าสุด</span>}
-                                    <span className="text-[11px] text-slate-400 font-medium flex items-center"><Calendar className="w-2.5 h-2.5 mr-0.5 text-purple-300" />{formatDisplayDate(record.serviceDate)}</span>
-                                  </div>
-                                  <p className="text-sm font-bold text-slate-800 leading-snug truncate">{record.service}</p>
-                                  {record.note && <p className="text-[11px] text-slate-400 mt-0.5 truncate">📝 {record.note}</p>}
-
-                                  {/* ── แสดงทีมผู้ดูแล ── */}
-                                  {(record.doctor || record.sale || record.assistant || record.appointedBy) && (
-                                    <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1.5">
-                                      {record.doctor && <span className="flex items-center text-[11px] text-slate-500"><Stethoscope className="w-2.5 h-2.5 mr-0.5 text-purple-400" />{record.doctor}</span>}
-                                      {record.sale && <span className="flex items-center text-[11px] text-slate-500"><ShoppingBag className="w-2.5 h-2.5 mr-0.5 text-purple-400" />{record.sale}</span>}
-                                      {record.assistant && <span className="flex items-center text-[11px] text-slate-500"><Users className="w-2.5 h-2.5 mr-0.5 text-purple-400" />{record.assistant}</span>}
-                                      {record.appointedBy && <span className="flex items-center text-[11px] text-slate-500"><UserCheck className="w-2.5 h-2.5 mr-0.5 text-purple-400" />{record.appointedBy}</span>}
-                                    </div>
-                                  )}
+                      {allSortedRecords.map((record, idx) => {
+                        const recBefore = record.imagesBefore || record.images || [];
+                        const recAfter = record.imagesAfter || [];
+                        const allRecImages = [...recBefore, ...recAfter];
+                        const thumb = allRecImages[0] || null;
+                        return (
+                          <div key={record.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                            <div className="flex items-start gap-3 px-4 py-3">
+                              {thumb ? (
+                                <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 cursor-pointer relative group/mini" onClick={() => setLightbox({ images: allRecImages, index: 0 })}>
+                                  <img src={thumb} alt="" className="w-full h-full object-cover group-hover/mini:scale-110 transition-transform duration-200" />
+                                  {allRecImages.length > 1 && <div className="absolute inset-0 bg-black/40 flex items-center justify-center"><span className="text-white text-[10px] font-bold">+{allRecImages.length - 1}</span></div>}
                                 </div>
-                                <div className="shrink-0 text-right">
-                                  {record.price && <p className="text-sm font-bold text-green-700">{formatCurrency(record.price)}</p>}
-                                  <div className="flex items-center justify-end gap-0.5 mt-1">
-                                    <button onClick={() => { openEditModal(record); setPatientModalHN(null); }} className="p-1.5 text-slate-300 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"><FileEdit className="w-3.5 h-3.5" /></button>
-                                    <button onClick={() => { handleDeleteClick(record.id); setPatientModalHN(null); }} className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                              ) : (
+                                <div className="w-14 h-14 rounded-xl bg-purple-50 flex items-center justify-center shrink-0 border border-purple-100"><ImageIcon className="w-5 h-5 text-purple-200" /></div>
+                              )}
+                              <div className="flex-grow min-w-0">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-1.5 mb-0.5">
+                                      {idx === 0 && <span className="bg-purple-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md shrink-0">ล่าสุด</span>}
+                                      <span className="text-[11px] text-slate-400 font-medium flex items-center"><Calendar className="w-2.5 h-2.5 mr-0.5 text-purple-300" />{formatDisplayDate(record.serviceDate)}</span>
+                                    </div>
+                                    <p className="text-sm font-bold text-slate-800 leading-snug truncate">{record.service}</p>
+                                    {record.note && <p className="text-[11px] text-slate-400 mt-0.5 truncate">📝 {record.note}</p>}
+                                    {(recBefore.length > 0 || recAfter.length > 0) && (
+                                      <div className="flex gap-1.5 mt-1">
+                                        {recBefore.length > 0 && <span className="text-[10px] font-bold bg-red-50 text-red-500 border border-red-200 px-1.5 py-0.5 rounded-md">🔴 ก่อน {recBefore.length}</span>}
+                                        {recAfter.length > 0 && <span className="text-[10px] font-bold bg-green-50 text-green-600 border border-green-200 px-1.5 py-0.5 rounded-md">🟢 หลัง {recAfter.length}</span>}
+                                      </div>
+                                    )}
+                                    {(record.doctor || record.sale || record.assistant || record.appointedBy) && (
+                                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1.5">
+                                        {record.doctor && <span className="flex items-center text-[11px] text-slate-500"><Stethoscope className="w-2.5 h-2.5 mr-0.5 text-purple-400" />{record.doctor}</span>}
+                                        {record.sale && <span className="flex items-center text-[11px] text-slate-500"><ShoppingBag className="w-2.5 h-2.5 mr-0.5 text-purple-400" />{record.sale}</span>}
+                                        {record.assistant && <span className="flex items-center text-[11px] text-slate-500"><Users className="w-2.5 h-2.5 mr-0.5 text-purple-400" />{record.assistant}</span>}
+                                        {record.appointedBy && <span className="flex items-center text-[11px] text-slate-500"><UserCheck className="w-2.5 h-2.5 mr-0.5 text-purple-400" />{record.appointedBy}</span>}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="shrink-0 text-right">
+                                    {record.price && <p className="text-sm font-bold text-green-700">{formatCurrency(record.price)}</p>}
+                                    <div className="flex items-center justify-end gap-0.5 mt-1">
+                                      <button onClick={() => { openEditModal(record); setPatientModalHN(null); }} className="p-1.5 text-slate-300 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"><FileEdit className="w-3.5 h-3.5" /></button>
+                                      <button onClick={() => { handleDeleteClick(record.id); setPatientModalHN(null); }} className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                                    </div>
                                   </div>
                                 </div>
                               </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
@@ -662,7 +688,7 @@ export default function App() {
           );
         })()}
 
-        {/* ── Modal: Follow Up ── */}
+        {/* ── Follow Up Modal ── */}
         {followUpCustomer && (
           <div className="fixed inset-0 bg-purple-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 pt-10">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
@@ -671,113 +697,48 @@ export default function App() {
                 <button onClick={() => setFollowUpCustomer(null)} className="p-1 hover:bg-white/20 rounded-full transition-colors"><X className="w-5 h-5" /></button>
               </div>
               <div className="overflow-y-auto p-6 flex-grow">
-                <div className="bg-purple-50 rounded-xl p-4 mb-6 border border-purple-100">
+                <div className="bg-purple-50 rounded-xl p-4 mb-5 border border-purple-100">
                   <p className="text-xs font-bold text-purple-400 uppercase tracking-wider mb-2">ข้อมูลลูกค้า</p>
-                  <div className="flex flex-wrap gap-y-2 gap-x-6">
-                    <div className="flex items-center text-purple-900"><User className="w-4 h-4 mr-2 text-purple-500" /><span className="font-bold">{followUpCustomer.fullName}</span></div>
-                    <div className="flex items-center text-slate-600"><Hash className="w-4 h-4 mr-2 text-purple-400" /><span>{followUpCustomer.hn}</span></div>
-                    {followUpCustomer.phone && <div className="flex items-center text-slate-600"><Phone className="w-4 h-4 mr-2 text-purple-400" /><span>{followUpCustomer.phone}</span></div>}
+                  <div className="flex flex-wrap gap-y-1.5 gap-x-5">
+                    <div className="flex items-center text-purple-900"><User className="w-4 h-4 mr-1.5 text-purple-500" /><span className="font-bold text-sm">{followUpCustomer.fullName}</span></div>
+                    <div className="flex items-center text-slate-600"><Hash className="w-4 h-4 mr-1.5 text-purple-400" /><span className="text-sm">{followUpCustomer.hn}</span></div>
+                    {followUpCustomer.phone && <div className="flex items-center text-slate-600"><Phone className="w-4 h-4 mr-1.5 text-purple-400" /><span className="text-sm">{followUpCustomer.phone}</span></div>}
                   </div>
                 </div>
                 <form id="followUpForm" onSubmit={handleSubmit} className="space-y-4">
                   <div>
                     <label className="block text-sm font-semibold text-purple-900 mb-1">วันที่เข้ารับบริการ <span className="text-red-500">*</span></label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Calendar className="h-4 w-4 text-purple-400" /></div>
-                      <input type="date" name="serviceDate" value={formData.serviceDate} onChange={handleInputChange} required className="pl-10 w-full rounded-lg border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2 text-sm text-slate-700 bg-gray-50/50" />
-                    </div>
+                    <div className="relative"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Calendar className="h-4 w-4 text-purple-400" /></div>
+                      <input type="date" name="serviceDate" value={formData.serviceDate} onChange={handleInputChange} required className="pl-10 w-full rounded-lg border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2 text-sm text-slate-700 bg-gray-50/50" /></div>
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-purple-900 mb-1">รายการหัตถการ <span className="text-red-500">*</span></label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><FileText className="h-4 w-4 text-purple-400" /></div>
-                      <input type="text" name="service" value={formData.service} onChange={handleInputChange} required placeholder="เช่น ฉีดโบท็อกซ์กราม, ฟิลเลอร์คาง" className="pl-10 w-full rounded-lg border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2 text-sm text-slate-700 bg-gray-50/50" />
-                    </div>
+                    <div className="relative"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><FileText className="h-4 w-4 text-purple-400" /></div>
+                      <input type="text" name="service" value={formData.service} onChange={handleInputChange} required placeholder="เช่น ฉีดโบท็อกซ์กราม" className="pl-10 w-full rounded-lg border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2 text-sm text-slate-700 bg-gray-50/50" /></div>
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-purple-900 mb-1">ราคา (บาท)</label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><DollarSign className="h-4 w-4 text-purple-400" /></div>
-                      <input type="number" name="price" value={formData.price} onChange={handleInputChange} min="0" placeholder="ไม่ระบุ" className="pl-10 w-full rounded-lg border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2 text-sm text-slate-700 bg-gray-50/50" />
-                    </div>
+                    <div className="relative"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><DollarSign className="h-4 w-4 text-purple-400" /></div>
+                      <input type="number" name="price" value={formData.price} onChange={handleInputChange} min="0" placeholder="ไม่ระบุ" className="pl-10 w-full rounded-lg border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2 text-sm text-slate-700 bg-gray-50/50" /></div>
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-purple-900 mb-1">หมายเหตุเพิ่มเติม</label>
-                    <textarea name="note" value={formData.note} onChange={handleInputChange} rows="2" className="w-full rounded-lg border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2 text-sm text-slate-700 bg-gray-50/50 resize-none"></textarea>
+                    <textarea name="note" value={formData.note} onChange={handleInputChange} rows="2" className="w-full rounded-lg border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2 text-sm text-slate-700 bg-gray-50/50 resize-none" />
                   </div>
-
-                  {/* ── ทีมผู้ดูแล ── */}
-                  <div className="space-y-3 pt-2">
-                    <h3 className="text-xs font-bold text-purple-400 uppercase tracking-wider mb-2 border-b pb-1">ทีมผู้ดูแล</h3>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-sm font-semibold text-purple-900 mb-1">Sale <span className="text-red-500">*</span></label>
-                        <div className="relative">
-                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><ShoppingBag className="h-4 w-4 text-purple-400" /></div>
-                          <input type="text" name="sale" value={formData.sale} onChange={handleInputChange} required placeholder="ชื่อ Sale" className="pl-10 w-full rounded-lg border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2 text-sm text-slate-700 bg-gray-50/50" />
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-purple-900 mb-1">ผู้นัด <span className="text-red-500">*</span></label>
-                        <div className="relative">
-                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><UserCheck className="h-4 w-4 text-purple-400" /></div>
-                          <input type="text" name="appointedBy" value={formData.appointedBy} onChange={handleInputChange} required placeholder="ชื่อผู้นัด" className="pl-10 w-full rounded-lg border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2 text-sm text-slate-700 bg-gray-50/50" />
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-purple-900 mb-1">ผู้ช่วย <span className="text-red-500">*</span></label>
-                        <div className="relative">
-                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Users className="h-4 w-4 text-purple-400" /></div>
-                          <input type="text" name="assistant" value={formData.assistant} onChange={handleInputChange} required placeholder="ชื่อผู้ช่วย" className="pl-10 w-full rounded-lg border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2 text-sm text-slate-700 bg-gray-50/50" />
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-purple-900 mb-1">แพทย์ <span className="text-red-500">*</span></label>
-                        <div className="relative">
-                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Stethoscope className="h-4 w-4 text-purple-400" /></div>
-                          <input type="text" name="doctor" value={formData.doctor} onChange={handleInputChange} required placeholder="ชื่อแพทย์" className="pl-10 w-full rounded-lg border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2 text-sm text-slate-700 bg-gray-50/50" />
-                        </div>
-                      </div>
+                  <StaffFields theme="purple" formData={formData} handleInputChange={handleInputChange} />
+                  <div>
+                    <h3 className="text-xs font-bold text-purple-400 uppercase tracking-wider border-b pb-1 mb-3">รูปภาพก่อน / หลังทำ</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <ImageUploadBlock type="before" existingImages={[]} setExistingImages={() => {}} newPreviews={beforePreviews} onRemoveNew={removeNewImage} onClickAdd={() => fileBeforeRef.current?.click()} onLightbox={(imgs, idx) => setLightbox({ images: imgs, index: idx })} />
+                      <ImageUploadBlock type="after" existingImages={[]} setExistingImages={() => {}} newPreviews={afterPreviews} onRemoveNew={removeNewImage} onClickAdd={() => fileAfterRef.current?.click()} onLightbox={(imgs, idx) => setLightbox({ images: imgs, index: idx })} />
                     </div>
-                  </div>
-
-                  {/* รูปภาพ */}
-                  <div className="pt-2">
-                    <div className="flex justify-between items-center mb-2">
-                      <label className="block text-sm font-semibold text-purple-900">รูปภาพประกอบ (สูงสุด 5 รูป)</label>
-                      <span className="text-xs text-purple-500 font-medium">{imageFiles.length}/5</span>
-                    </div>
-                    {imagePreviews.length > 0 ? (
-                      <div className="grid grid-cols-3 gap-2 mb-3">
-                        {imagePreviews.map((src, idx) => (
-                          <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border border-purple-200 group">
-                            <img src={src} alt="preview" className="w-full h-full object-cover" />
-                            <button type="button" onClick={() => removeNewImage(idx)} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"><X className="w-3 h-3" /></button>
-                          </div>
-                        ))}
-                        {imagePreviews.length < 5 && (
-                          <div onClick={() => modalFileInputRef.current?.click()} className="aspect-square rounded-lg border-2 border-dashed border-purple-300 bg-purple-50 flex flex-col items-center justify-center cursor-pointer hover:bg-purple-100">
-                            <Camera className="w-5 h-5 text-purple-400 mb-1" /><span className="text-[10px] text-purple-500 font-medium">เพิ่มรูป</span>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div onClick={() => modalFileInputRef.current?.click()} className="border-2 border-dashed rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer border-purple-200 hover:border-purple-400 bg-purple-50/30">
-                        <div className="py-4 text-center">
-                          <div className="bg-purple-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2"><ImageIcon className="w-6 h-6 text-purple-500" /></div>
-                          <p className="text-sm font-medium text-purple-700">คลิกเพื่ออัปโหลดรูปภาพ</p>
-                          <p className="text-xs text-purple-400 mt-1">รองรับหลายรูป (ระบบจะบีบอัดให้อัตโนมัติ)</p>
-                        </div>
-                      </div>
-                    )}
-                    <input type="file" ref={modalFileInputRef} onChange={handleImageChange} accept="image/*" multiple className="hidden" />
                   </div>
                 </form>
               </div>
               <div className="border-t border-purple-100 p-4 bg-gray-50 flex justify-end gap-3 shrink-0 rounded-b-2xl">
                 <button type="button" onClick={() => setFollowUpCustomer(null)} className="px-5 py-2.5 rounded-xl text-slate-600 font-bold hover:bg-slate-200 transition-colors">ยกเลิก</button>
-                <button type="submit" form="followUpForm" disabled={submitting || !formData.service || !formData.serviceDate || !formData.sale || !formData.assistant || !formData.appointedBy || !formData.doctor}
-                  className={`px-6 py-2.5 rounded-xl text-white font-bold shadow-md transition-all flex items-center ${(submitting || !formData.service || !formData.serviceDate || !formData.sale || !formData.assistant || !formData.appointedBy || !formData.doctor) ? 'bg-purple-300 cursor-not-allowed' : 'bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:shadow-lg active:scale-[0.98]'}`}>
+                <button type="submit" form="followUpForm" disabled={submitting || !formData.service || !formData.serviceDate || staffRequired}
+                  className={`px-6 py-2.5 rounded-xl text-white font-bold shadow-md transition-all flex items-center ${(submitting || !formData.service || !formData.serviceDate || staffRequired) ? 'bg-purple-300 cursor-not-allowed' : 'bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:shadow-lg active:scale-[0.98]'}`}>
                   {submitting ? <><Sparkles className="animate-spin w-5 h-5 mr-2" /> กำลังส่งข้อมูล...</> : 'บันทึกประวัติ'}
                 </button>
               </div>
@@ -785,7 +746,7 @@ export default function App() {
           </div>
         )}
 
-        {/* ── Modal: Edit Record ── */}
+        {/* ── Edit Modal ── */}
         {editingRecord && (
           <div className="fixed inset-0 bg-purple-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 pt-10">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
@@ -796,7 +757,7 @@ export default function App() {
               <div className="overflow-y-auto p-6 flex-grow">
                 <form id="editRecordForm" onSubmit={handleUpdate} className="space-y-4">
                   <div className="space-y-3">
-                    <h3 className="text-xs font-bold text-blue-500 uppercase tracking-wider mb-2 border-b pb-1">รายละเอียดหัตถการ</h3>
+                    <h3 className="text-xs font-bold text-blue-400 uppercase tracking-wider border-b pb-1">รายละเอียดหัตถการ</h3>
                     <div>
                       <label className="block text-sm font-semibold text-slate-700 mb-1">วันที่เข้ารับบริการ <span className="text-red-500">*</span></label>
                       <input type="date" name="serviceDate" value={formData.serviceDate} onChange={handleInputChange} required className="w-full rounded-lg border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-200 px-3 py-2 text-sm text-slate-700 bg-gray-50/50" />
@@ -811,81 +772,23 @@ export default function App() {
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-slate-700 mb-1">หมายเหตุเพิ่มเติม</label>
-                      <textarea name="note" value={formData.note} onChange={handleInputChange} rows="2" className="w-full rounded-lg border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-200 px-3 py-2 text-sm text-slate-700 bg-gray-50/50 resize-none"></textarea>
+                      <textarea name="note" value={formData.note} onChange={handleInputChange} rows="2" className="w-full rounded-lg border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-200 px-3 py-2 text-sm text-slate-700 bg-gray-50/50 resize-none" />
                     </div>
                   </div>
-
-                  {/* ── ทีมผู้ดูแล (edit theme) ── */}
-                  {/* ── ทีมผู้ดูแล (edit) ── */}
-                  <div className="space-y-3 pt-2">
-                    <h3 className="text-xs font-bold text-blue-400 uppercase tracking-wider mb-2 border-b pb-1">ทีมผู้ดูแล</h3>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-1">Sale <span className="text-red-500">*</span></label>
-                        <div className="relative">
-                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><ShoppingBag className="h-4 w-4 text-blue-400" /></div>
-                          <input type="text" name="sale" value={formData.sale} onChange={handleInputChange} required placeholder="ชื่อ Sale" className="pl-10 w-full rounded-lg border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-200 px-3 py-2 text-sm text-slate-700 bg-gray-50/50" />
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-1">ผู้นัด <span className="text-red-500">*</span></label>
-                        <div className="relative">
-                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><UserCheck className="h-4 w-4 text-blue-400" /></div>
-                          <input type="text" name="appointedBy" value={formData.appointedBy} onChange={handleInputChange} required placeholder="ชื่อผู้นัด" className="pl-10 w-full rounded-lg border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-200 px-3 py-2 text-sm text-slate-700 bg-gray-50/50" />
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-1">ผู้ช่วย <span className="text-red-500">*</span></label>
-                        <div className="relative">
-                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Users className="h-4 w-4 text-blue-400" /></div>
-                          <input type="text" name="assistant" value={formData.assistant} onChange={handleInputChange} required placeholder="ชื่อผู้ช่วย" className="pl-10 w-full rounded-lg border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-200 px-3 py-2 text-sm text-slate-700 bg-gray-50/50" />
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-1">แพทย์ <span className="text-red-500">*</span></label>
-                        <div className="relative">
-                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Stethoscope className="h-4 w-4 text-blue-400" /></div>
-                          <input type="text" name="doctor" value={formData.doctor} onChange={handleInputChange} required placeholder="ชื่อแพทย์" className="pl-10 w-full rounded-lg border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-200 px-3 py-2 text-sm text-slate-700 bg-gray-50/50" />
-                        </div>
-                      </div>
+                  <StaffFields theme="blue" formData={formData} handleInputChange={handleInputChange} />
+                  <div>
+                    <h3 className="text-xs font-bold text-blue-400 uppercase tracking-wider border-b pb-1 mb-3">รูปภาพก่อน / หลังทำ</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <ImageUploadBlock type="before" existingImages={editBeforeImages} setExistingImages={setEditBeforeImages} newPreviews={beforePreviews} onRemoveNew={removeNewImage} onClickAdd={() => fileBeforeRef.current?.click()} onLightbox={(imgs, idx) => setLightbox({ images: imgs, index: idx })} />
+                      <ImageUploadBlock type="after" existingImages={editAfterImages} setExistingImages={setEditAfterImages} newPreviews={afterPreviews} onRemoveNew={removeNewImage} onClickAdd={() => fileAfterRef.current?.click()} onLightbox={(imgs, idx) => setLightbox({ images: imgs, index: idx })} />
                     </div>
-                  </div>
-
-                  {/* รูปภาพ */}
-                  <div className="pt-2">
-                    <div className="flex justify-between items-center mb-2">
-                      <label className="block text-sm font-semibold text-slate-700">ปรับเปลี่ยนรูปภาพ (สูงสุด 5 รูป)</label>
-                      <span className="text-xs text-blue-500 font-medium">{editExistingImages.length + imageFiles.length}/5</span>
-                    </div>
-                    <div className="grid grid-cols-3 gap-2 mb-3">
-                      {editExistingImages.map((src, idx) => (
-                        <div key={`existing-${idx}`} className="relative aspect-square rounded-lg overflow-hidden border border-slate-200 group">
-                          <img src={src} alt="existing" className="w-full h-full object-cover" />
-                          <button type="button" onClick={() => removeExistingImage(idx)} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"><X className="w-3 h-3" /></button>
-                          <div className="absolute bottom-0 left-0 right-0 bg-black/40 text-[10px] text-white text-center py-0.5">รูปเดิม</div>
-                        </div>
-                      ))}
-                      {imagePreviews.map((src, idx) => (
-                        <div key={`new-${idx}`} className="relative aspect-square rounded-lg overflow-hidden border border-blue-200 group">
-                          <img src={src} alt="new" className="w-full h-full object-cover" />
-                          <button type="button" onClick={() => removeNewImage(idx)} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"><X className="w-3 h-3" /></button>
-                          <div className="absolute bottom-0 left-0 right-0 bg-blue-500/80 text-[10px] text-white text-center py-0.5">รูปใหม่</div>
-                        </div>
-                      ))}
-                      {(editExistingImages.length + imagePreviews.length) < 5 && (
-                        <div onClick={() => modalFileInputRef.current?.click()} className="aspect-square rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-100 transition-colors">
-                          <Camera className="w-5 h-5 text-slate-400 mb-1" /><span className="text-[10px] text-slate-500 font-medium">เพิ่มรูป</span>
-                        </div>
-                      )}
-                    </div>
-                    <input type="file" ref={modalFileInputRef} onChange={handleImageChange} accept="image/*" multiple className="hidden" />
                   </div>
                 </form>
               </div>
               <div className="border-t border-slate-100 p-4 bg-gray-50 flex justify-end gap-3 shrink-0 rounded-b-2xl">
                 <button type="button" onClick={closeEditModal} className="px-5 py-2.5 rounded-xl text-slate-600 font-bold hover:bg-slate-200 transition-colors">ยกเลิก</button>
-                <button type="submit" form="editRecordForm" disabled={submitting || !formData.service || !formData.serviceDate || !formData.sale || !formData.assistant || !formData.appointedBy || !formData.doctor}
-                  className={`px-6 py-2.5 rounded-xl text-white font-bold shadow-md transition-all flex items-center ${(submitting || !formData.service || !formData.serviceDate || !formData.sale || !formData.assistant || !formData.appointedBy || !formData.doctor) ? 'bg-blue-300 cursor-not-allowed' : 'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:shadow-lg active:scale-[0.98]'}`}>
+                <button type="submit" form="editRecordForm" disabled={submitting || !formData.service || !formData.serviceDate || staffRequired}
+                  className={`px-6 py-2.5 rounded-xl text-white font-bold shadow-md transition-all flex items-center ${(submitting || !formData.service || !formData.serviceDate || staffRequired) ? 'bg-blue-300 cursor-not-allowed' : 'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:shadow-lg active:scale-[0.98]'}`}>
                   {submitting ? <><Sparkles className="animate-spin w-5 h-5 mr-2" /> กำลังบันทึก...</> : 'บันทึกการแก้ไข'}
                 </button>
               </div>
@@ -893,15 +796,14 @@ export default function App() {
           </div>
         )}
 
-        {/* ── Lightbox with prev/next + swipe ── */}
+        {/* ── Lightbox ── */}
         {lightbox && (() => {
           const { images, index } = lightbox;
           const total = images.length;
           const goPrev = (e) => { e.stopPropagation(); setLightbox(lb => ({ ...lb, index: (lb.index - 1 + total) % total })); };
           const goNext = (e) => { e.stopPropagation(); setLightbox(lb => ({ ...lb, index: (lb.index + 1) % total })); };
           return (
-            <div
-              className="fixed inset-0 bg-black/95 backdrop-blur-sm z-[100] flex items-center justify-center"
+            <div className="fixed inset-0 bg-black/95 backdrop-blur-sm z-[100] flex items-center justify-center"
               onClick={() => setLightbox(null)}
               onTouchStart={e => { touchStartX.current = e.touches[0].clientX; }}
               onTouchEnd={e => {
@@ -909,56 +811,17 @@ export default function App() {
                 const diff = touchStartX.current - e.changedTouches[0].clientX;
                 if (Math.abs(diff) > 40) { diff > 0 ? setLightbox(lb => ({ ...lb, index: (lb.index + 1) % total })) : setLightbox(lb => ({ ...lb, index: (lb.index - 1 + total) % total })); }
                 touchStartX.current = null;
-              }}
-            >
-              {/* Close */}
-              <button onClick={() => setLightbox(null)} className="absolute top-4 right-4 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-2 transition-colors z-10">
-                <X className="w-7 h-7" />
-              </button>
-
-              {/* Counter */}
-              {total > 1 && (
-                <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-black/50 text-white text-xs font-bold px-3 py-1.5 rounded-full z-10">
-                  {index + 1} / {total}
-                </div>
-              )}
-
-              {/* Prev button */}
-              {total > 1 && (
-                <button onClick={goPrev} className="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/25 text-white rounded-full p-2.5 sm:p-3 transition-all z-10 backdrop-blur-sm">
-                  <ChevronLeft className="w-6 h-6 sm:w-7 sm:h-7" />
-                </button>
-              )}
-
-              {/* Image */}
-              <img
-                key={index}
-                src={images[index]}
-                alt={`รูป ${index + 1}`}
-                className="max-w-[85vw] max-h-[85vh] object-contain rounded-lg shadow-2xl select-none"
-                style={{ animation: 'fadeIn 0.18s ease' }}
-                onClick={e => e.stopPropagation()}
-                draggable={false}
-              />
-
-              {/* Next button */}
-              {total > 1 && (
-                <button onClick={goNext} className="absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/25 text-white rounded-full p-2.5 sm:p-3 transition-all z-10 backdrop-blur-sm">
-                  <ChevronRight className="w-6 h-6 sm:w-7 sm:h-7" />
-                </button>
-              )}
-
-              {/* Dot indicators */}
+              }}>
+              <button onClick={() => setLightbox(null)} className="absolute top-4 right-4 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-2 z-10"><X className="w-7 h-7" /></button>
+              {total > 1 && <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-black/50 text-white text-xs font-bold px-3 py-1.5 rounded-full z-10">{index + 1} / {total}</div>}
+              {total > 1 && <button onClick={goPrev} className="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/25 text-white rounded-full p-2.5 sm:p-3 z-10 backdrop-blur-sm"><ChevronLeft className="w-6 h-6 sm:w-7 sm:h-7" /></button>}
+              <img key={index} src={images[index]} alt={`รูป ${index + 1}`} className="max-w-[85vw] max-h-[85vh] object-contain rounded-lg shadow-2xl select-none" style={{ animation: 'fadeIn 0.18s ease' }} onClick={e => e.stopPropagation()} draggable={false} />
+              {total > 1 && <button onClick={goNext} className="absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/25 text-white rounded-full p-2.5 sm:p-3 z-10 backdrop-blur-sm"><ChevronRight className="w-6 h-6 sm:w-7 sm:h-7" /></button>}
               {total > 1 && total <= 10 && (
                 <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
-                  {images.map((_, i) => (
-                    <button key={i} onClick={e => { e.stopPropagation(); setLightbox(lb => ({ ...lb, index: i })); }}
-                      className={`w-1.5 h-1.5 rounded-full transition-all ${i === index ? 'bg-white scale-125' : 'bg-white/40'}`}
-                    />
-                  ))}
+                  {images.map((_, i) => <button key={i} onClick={e => { e.stopPropagation(); setLightbox(lb => ({ ...lb, index: i })); }} className={`w-1.5 h-1.5 rounded-full transition-all ${i === index ? 'bg-white scale-125' : 'bg-white/40'}`} />)}
                 </div>
               )}
-
               <style>{`@keyframes fadeIn { from { opacity: 0.4; transform: scale(0.97); } to { opacity: 1; transform: scale(1); } }`}</style>
             </div>
           );

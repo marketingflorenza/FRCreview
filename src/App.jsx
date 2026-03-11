@@ -340,6 +340,8 @@ const BookingDetailModal = ({ booking, onClose, onUpdateStatus, onUpdateCallStat
   const [nextTime, setNextTime] = useState(booking.bookingTime);
   const [nextProc, setNextProc] = useState(booking.procedure);
   const [updating, setUpdating] = useState(false);
+  // Local state for optimistic call status update
+  const [localCallStatus, setLocalCallStatus] = useState(booking.callStatus || 'ยังไม่โทรคอนเฟิม');
 
   const sc = STATUS_CONFIG[booking.status] || STATUS_CONFIG['ยังไม่มา'];
   const newCust = isNewCustomer(booking, patients);
@@ -428,10 +430,14 @@ const BookingDetailModal = ({ booking, onClose, onUpdateStatus, onUpdateCallStat
             </p>
             <div className="flex flex-col gap-1.5">
               {Object.entries(CALL_CONFIG).map(([opt, cc]) => {
-                const isSelected = (booking.callStatus || 'ยังไม่โทรคอนเฟิม') === opt;
+                const isSelected = localCallStatus === opt;
                 const IconC = cc.icon;
                 return (
-                  <label key={opt} onClick={() => onUpdateCallStatus(booking.id, opt)}
+                  <label key={opt}
+                    onClick={() => {
+                      setLocalCallStatus(opt);
+                      onUpdateCallStatus(booking.id, opt);
+                    }}
                     className={`flex items-center gap-2.5 cursor-pointer p-2 rounded-xl border transition-all hover:border-blue-300 ${isSelected ? `${cc.border} ${cc.bg}` : 'border-slate-200 bg-white'}`}>
                     <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all ${isSelected ? 'border-blue-500 bg-blue-500' : 'border-slate-300 bg-white'}`}>
                       {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}

@@ -223,7 +223,7 @@ const RegisterPatientModal = ({ onClose, onRegistered }) => {
           <div className="flex items-center gap-2.5">
             <div className="p-2 bg-white/20 rounded-xl"><UserPlus className="w-5 h-5" /></div>
             <div>
-              <h3 className="font-bold text-base leading-tight">ลงทะเบียนลูกค้าใหม่</h3>
+              <h3 className="font-bold text-base leading-tight">ลงทะเบียนลที่มี HN</h3>
               <p className="text-emerald-100 text-[10px]">บันทึกข้อมูลเข้าระบบประวัติลูกค้า</p>
             </div>
           </div>

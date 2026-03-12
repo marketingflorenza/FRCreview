@@ -188,12 +188,120 @@ const CustomerTypeCard = ({ label, value, Icon, gradient, iconBg, iconText, badg
   </div>
 );
 
+// ─── Register New Patient Mini-Modal ─────────────────────────────────────────
+const RegisterPatientModal = ({ onClose, onRegistered }) => {
+  const [regForm, setRegForm] = useState({ fullName: '', hn: '', phone: '' });
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState('');
+
+  const handleSubmit = async () => {
+    if (!regForm.fullName.trim()) { setErr('กรุณากรอกชื่อ-นามสกุล'); return; }
+    if (!regForm.hn.trim()) { setErr('กรุณากรอกเลข HN'); return; }
+    setSaving(true);
+    try {
+      await addDoc(RECORDS_PATH(), {
+        fullName: regForm.fullName.trim(),
+        hn: regForm.hn.trim(),
+        phone: regForm.phone.trim(),
+        serviceDate: todayStr(),
+        service: 'ลงทะเบียนผู้ป่วยใหม่',
+        price: null,
+        note: 'ลงทะเบียนผ่านระบบนัดหมาย',
+        sale: '', assistant: '', appointedBy: '', doctor: '',
+        imagesBefore: [], imagesAfter: [], images: [],
+        createdAt: serverTimestamp(),
+      });
+      onRegistered({ hn: regForm.hn.trim(), fullName: regForm.fullName.trim(), phone: regForm.phone.trim() });
+    } catch (e) { setErr('เกิดข้อผิดพลาด: ' + e.message); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+      <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden">
+        <div className="bg-gradient-to-r from-emerald-600 to-teal-500 px-5 py-4 flex items-center justify-between text-white">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 bg-white/20 rounded-xl"><UserPlus className="w-5 h-5" /></div>
+            <div>
+              <h3 className="font-bold text-base leading-tight">ลงทะเบียนลูกค้าใหม่</h3>
+              <p className="text-emerald-100 text-[10px]">บันทึกข้อมูลเข้าระบบประวัติลูกค้า</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-1.5 hover:bg-white/20 rounded-full transition-colors"><X className="w-5 h-5" /></button>
+        </div>
+        <div className="p-5 space-y-3">
+          <div>
+            <label className="block text-xs font-bold text-slate-600 mb-1.5">ชื่อ-นามสกุล <span className="text-red-500">*</span></label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><User className="h-4 w-4 text-emerald-400" /></div>
+              <input autoFocus type="text" value={regForm.fullName}
+                onChange={e => { setRegForm(f => ({ ...f, fullName: e.target.value })); setErr(''); }}
+                placeholder="เช่น สมหญิง สวยงาม"
+                className="pl-10 w-full rounded-xl border border-emerald-200 focus:border-emerald-500 focus:ring focus:ring-emerald-200 px-3 py-2.5 text-sm text-slate-700" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-600 mb-1.5">เลข HN <span className="text-red-500">*</span></label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Hash className="h-4 w-4 text-emerald-400" /></div>
+              <input type="text" value={regForm.hn}
+                onChange={e => { setRegForm(f => ({ ...f, hn: e.target.value })); setErr(''); }}
+                placeholder="เช่น HN12345"
+                className="pl-10 w-full rounded-xl border border-emerald-200 focus:border-emerald-500 focus:ring focus:ring-emerald-200 px-3 py-2.5 text-sm text-slate-700" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-600 mb-1.5">เบอร์โทรศัพท์</label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Phone className="h-4 w-4 text-emerald-400" /></div>
+              <input type="tel" value={regForm.phone}
+                onChange={e => setRegForm(f => ({ ...f, phone: e.target.value }))}
+                placeholder="08X-XXX-XXXX"
+                className="pl-10 w-full rounded-xl border border-emerald-200 focus:border-emerald-500 focus:ring focus:ring-emerald-200 px-3 py-2.5 text-sm text-slate-700" />
+            </div>
+          </div>
+          {err && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 font-medium">{err}</p>}
+          <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-100">
+            <p className="text-[11px] text-emerald-700 font-medium">✅ ข้อมูลจะถูกบันทึกในแท็บ "ประวัติลูกค้า" และสามารถค้นหา HN ได้ทันที</p>
+          </div>
+        </div>
+        <div className="px-5 pb-5 flex gap-3">
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-slate-600 font-bold bg-slate-100 hover:bg-slate-200 transition-colors text-sm">ยกเลิก</button>
+          <button onClick={handleSubmit} disabled={saving || !regForm.fullName.trim() || !regForm.hn.trim()}
+            className={`flex-1 py-2.5 rounded-xl text-white font-bold transition-all text-sm flex items-center justify-center gap-2 shadow-md
+              ${saving || !regForm.fullName.trim() || !regForm.hn.trim() ? 'bg-emerald-300 cursor-not-allowed' : 'bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 active:scale-[0.98]'}`}>
+            {saving ? <><Sparkles className="animate-spin w-4 h-4" /> กำลังบันทึก...</> : <><UserPlus className="w-4 h-4" /> ลงทะเบียน</>}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ─── Booking Form Modal ───────────────────────────────────────────────────────
 const BookingFormModal = ({ booking, patients, onClose, onSave, isOffline, allBookings }) => {
   const [form, setForm] = useState(booking);
   const [hnWarn, setHnWarn] = useState('');
   const [saving, setSaving] = useState(false);
-  const [isNewCust, setIsNewCust] = useState(!booking.hn);
+  // 'existing' | 'new'
+  const [custMode, setCustMode] = useState(booking.hn ? 'existing' : 'new');
+
+  // HN search state (existing customers)
+  const [hnSearch, setHnSearch] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [selectedPatient, setSelectedPatient] = useState(
+    booking.hn ? patients.find(p => p.hn === booking.hn) || null : null
+  );
+  const [showRegister, setShowRegister] = useState(false);
+  const searchRef = useRef(null);
+
+  const filteredPatients = hnSearch.trim().length > 0
+    ? patients.filter(p =>
+        (p.hn || '').toLowerCase().includes(hnSearch.toLowerCase()) ||
+        (p.fullName || '').toLowerCase().includes(hnSearch.toLowerCase()) ||
+        (p.phone || '').includes(hnSearch)
+      ).slice(0, 8)
+    : patients.slice(0, 8);
 
   const checkHN = useCallback((hn, date, excludeId) => {
     if (!hn || !date) { setHnWarn(''); return; }
@@ -208,19 +316,32 @@ const BookingFormModal = ({ booking, patients, onClose, onSave, isOffline, allBo
     } else { setHnWarn(''); }
   }, [allBookings]);
 
-  const handleHNSelect = (hn) => {
-    const p = patients.find(x => x.hn === hn);
-    if (p) {
-      setForm(f => ({ ...f, hn: p.hn, customerName: p.fullName, phoneNumber: p.phone || '' }));
-    }
-    checkHN(hn, form.bookingDate, booking.id);
+  const selectPatient = (p) => {
+    setSelectedPatient(p);
+    setForm(f => ({ ...f, hn: p.hn, customerName: p.fullName, phoneNumber: p.phone || '' }));
+    setHnSearch('');
+    setShowDropdown(false);
+    checkHN(p.hn, form.bookingDate, booking.id);
+  };
+
+  const clearPatient = () => {
+    setSelectedPatient(null);
+    setForm(f => ({ ...f, hn: '', customerName: '', phoneNumber: '' }));
+    setHnSearch('');
+    setHnWarn('');
+  };
+
+  const switchMode = (mode) => {
+    setCustMode(mode);
+    clearPatient();
+    setForm(f => ({ ...f, hn: '', customerName: '', phoneNumber: '' }));
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     const updated = { ...form, [name]: value };
     setForm(updated);
-    if (name === 'hn' || name === 'bookingDate') checkHN(updated.hn, updated.bookingDate, booking.id);
+    if (name === 'bookingDate' && form.hn) checkHN(form.hn, value, booking.id);
   };
 
   const handleSubmit = async (e) => {
@@ -231,99 +352,202 @@ const BookingFormModal = ({ booking, patients, onClose, onSave, isOffline, allBo
     setSaving(false);
   };
 
-  return (
-    <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[92vh]">
-        <div className="bg-gradient-to-r from-blue-700 to-blue-500 px-6 py-4 flex items-center justify-between text-white shrink-0 rounded-t-3xl sm:rounded-t-3xl">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-white/20 rounded-xl"><CalendarPlus className="w-5 h-5" /></div>
-            <h2 className="text-lg font-bold">{booking.id ? 'แก้ไขนัดหมาย' : 'เพิ่มนัดหมายใหม่'}</h2>
-          </div>
-          <button onClick={onClose} className="p-1.5 hover:bg-white/20 rounded-full transition-colors"><X className="w-5 h-5" /></button>
-        </div>
-        <form onSubmit={handleSubmit} className="overflow-y-auto flex-grow p-5 space-y-4">
-          <div className="bg-blue-50 rounded-2xl p-4 border border-blue-100">
-            <p className="text-xs font-bold text-blue-500 uppercase tracking-wider mb-3">ข้อมูลลูกค้า</p>
-            <div className="flex gap-2 mb-3">
-              <button type="button" onClick={() => setIsNewCust(false)}
-                className={`flex-1 py-2 rounded-xl text-sm font-bold transition-all ${!isNewCust ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-blue-600 border border-blue-200'}`}>
-                ลูกค้าเดิม
-              </button>
-              <button type="button" onClick={() => setIsNewCust(true)}
-                className={`flex-1 py-2 rounded-xl text-sm font-bold transition-all ${isNewCust ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-blue-600 border border-blue-200'}`}>
-                ลูกค้าใหม่
-              </button>
-            </div>
-            {!isNewCust ? (
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1">เลือกลูกค้า</label>
-                <select onChange={e => handleHNSelect(e.target.value)} defaultValue=""
-                  className="w-full rounded-xl border border-blue-200 focus:border-blue-500 focus:ring focus:ring-blue-200 px-3 py-2 text-sm bg-white">
-                  <option value="">-- เลือกจากรายชื่อในระบบ --</option>
-                  {patients.map(p => (
-                    <option key={p.hn} value={p.hn}>{p.fullName} ({p.hn})</option>
-                  ))}
-                </select>
-              </div>
-            ) : null}
-            <div className="grid grid-cols-2 gap-3 mt-3">
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1">เลข HN</label>
-                <input name="hn" value={form.hn} onChange={handleChange} placeholder="HN12345"
-                  className="w-full rounded-xl border border-blue-200 focus:border-blue-500 focus:ring focus:ring-blue-200 px-3 py-2 text-sm bg-white" />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1">เบอร์โทรศัพท์ <span className="text-red-500">*</span></label>
-                <input name="phoneNumber" value={form.phoneNumber} onChange={handleChange} required placeholder="08x-xxx-xxxx"
-                  className="w-full rounded-xl border border-blue-200 focus:border-blue-500 focus:ring focus:ring-blue-200 px-3 py-2 text-sm bg-white" />
-              </div>
-            </div>
-            <div className="mt-3">
-              <label className="block text-xs font-bold text-slate-600 mb-1">ชื่อ-นามสกุล <span className="text-red-500">*</span></label>
-              <input name="customerName" value={form.customerName} onChange={handleChange} required placeholder="ชื่อผู้รับบริการ"
-                className="w-full rounded-xl border border-blue-200 focus:border-blue-500 focus:ring focus:ring-blue-200 px-3 py-2 text-sm bg-white" />
-            </div>
-            {hnWarn && <p className="mt-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 font-medium">{hnWarn}</p>}
-          </div>
+  const handleRegistered = (newPatient) => {
+    setShowRegister(false);
+    setSelectedPatient(newPatient);
+    setForm(f => ({ ...f, hn: newPatient.hn, customerName: newPatient.fullName, phoneNumber: newPatient.phone || '' }));
+    setCustMode('existing');
+    checkHN(newPatient.hn, form.bookingDate, booking.id);
+  };
 
-          <div className="space-y-3">
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b pb-1">รายละเอียดนัดหมาย</h3>
-            <div className="grid grid-cols-2 gap-3">
+  useEffect(() => {
+    const handler = (e) => { if (searchRef.current && !searchRef.current.contains(e.target)) setShowDropdown(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  return (
+    <>
+      {showRegister && <RegisterPatientModal onClose={() => setShowRegister(false)} onRegistered={handleRegistered} />}
+      <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div className="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[92vh]">
+          <div className="bg-gradient-to-r from-blue-700 to-blue-500 px-6 py-4 flex items-center justify-between text-white shrink-0 rounded-t-3xl">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-white/20 rounded-xl"><CalendarPlus className="w-5 h-5" /></div>
+              <h2 className="text-lg font-bold">{booking.id ? 'แก้ไขนัดหมาย' : 'เพิ่มนัดหมายใหม่'}</h2>
+            </div>
+            <button onClick={onClose} className="p-1.5 hover:bg-white/20 rounded-full transition-colors"><X className="w-5 h-5" /></button>
+          </div>
+          <form onSubmit={handleSubmit} className="overflow-y-auto flex-grow p-5 space-y-4">
+
+            {/* ── Customer Section ── */}
+            <div className="bg-blue-50 rounded-2xl p-4 border border-blue-100 space-y-3">
+              <p className="text-xs font-bold text-blue-500 uppercase tracking-wider">ข้อมูลลูกค้า</p>
+
+              {/* Mode tabs */}
+              <div className="flex gap-1.5 bg-white/70 p-1 rounded-xl border border-blue-100">
+                <button type="button" onClick={() => switchMode('existing')}
+                  className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5
+                    ${custMode === 'existing' ? 'bg-blue-600 text-white shadow-sm' : 'text-blue-500 hover:text-blue-700'}`}>
+                  <Star className="w-3 h-3" /> ลูกค้าเดิม (มี HN)
+                </button>
+                <button type="button" onClick={() => switchMode('new')}
+                  className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5
+                    ${custMode === 'new' ? 'bg-amber-500 text-white shadow-sm' : 'text-amber-600 hover:text-amber-700'}`}>
+                  <UserPlus className="w-3 h-3" /> ลูกค้าใหม่
+                </button>
+              </div>
+
+              {/* ── EXISTING: HN Search ── */}
+              {custMode === 'existing' && (
+                <div className="space-y-2">
+                  {selectedPatient ? (
+                    <div className="flex items-center gap-3 bg-white border-2 border-blue-400 rounded-xl px-3 py-2.5">
+                      <div className="w-9 h-9 bg-blue-100 rounded-full flex items-center justify-center shrink-0">
+                        <User className="w-4 h-4 text-blue-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-slate-800 text-sm truncate">{selectedPatient.fullName}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="flex items-center text-[11px] text-blue-600 font-bold"><Hash className="w-2.5 h-2.5 mr-0.5" />{selectedPatient.hn}</span>
+                          {selectedPatient.phone && <span className="flex items-center text-[11px] text-slate-400"><Phone className="w-2.5 h-2.5 mr-0.5" />{selectedPatient.phone}</span>}
+                        </div>
+                      </div>
+                      <button type="button" onClick={clearPatient} className="shrink-0 p-1.5 bg-slate-100 hover:bg-red-100 rounded-full transition-colors">
+                        <X className="w-3.5 h-3.5 text-slate-400 hover:text-red-500" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div ref={searchRef} className="relative">
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Search className="h-4 w-4 text-blue-400" /></div>
+                        <input type="text" value={hnSearch}
+                          onChange={e => { setHnSearch(e.target.value); setShowDropdown(true); }}
+                          onFocus={() => setShowDropdown(true)}
+                          placeholder="ค้นหาชื่อ, HN หรือเบอร์โทร..."
+                          className="pl-10 w-full rounded-xl border border-blue-200 focus:border-blue-500 focus:ring focus:ring-blue-200 px-3 py-2.5 text-sm bg-white" />
+                        {hnSearch && (
+                          <button type="button" onClick={() => { setHnSearch(''); setShowDropdown(false); }}
+                            className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                            <X className="w-3.5 h-3.5 text-slate-400" />
+                          </button>
+                        )}
+                      </div>
+                      {showDropdown && (
+                        <div className="absolute z-10 left-0 right-0 mt-1 bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden max-h-48 overflow-y-auto">
+                          {filteredPatients.length === 0 ? (
+                            <div className="px-4 py-3 text-xs text-slate-400 text-center">ไม่พบลูกค้า</div>
+                          ) : filteredPatients.map(p => (
+                            <div key={p.hn} onClick={() => selectPatient(p)}
+                              className="flex items-center gap-3 px-4 py-2.5 hover:bg-blue-50 cursor-pointer transition-colors border-b border-slate-50 last:border-0">
+                              <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center shrink-0">
+                                <User className="w-3.5 h-3.5 text-purple-500" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-bold text-slate-800 text-sm truncate">{p.fullName}</p>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[11px] text-blue-500 font-bold flex items-center"><Hash className="w-2.5 h-2.5 mr-0.5" />{p.hn}</span>
+                                  {p.phone && <span className="text-[11px] text-slate-400 flex items-center"><Phone className="w-2.5 h-2.5 mr-0.5" />{p.phone}</span>}
+                                </div>
+                              </div>
+                              <ChevronRight className="w-3.5 h-3.5 text-slate-300 shrink-0" />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Phone + name override when patient selected */}
+                  {selectedPatient && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 mb-1">เบอร์โทรศัพท์ <span className="text-red-500">*</span></label>
+                        <input name="phoneNumber" value={form.phoneNumber} onChange={handleChange} required placeholder="08x-xxx-xxxx"
+                          className="w-full rounded-xl border border-blue-200 focus:border-blue-500 focus:ring focus:ring-blue-200 px-3 py-2 text-sm bg-white" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 mb-1">ชื่อ (แก้ไขได้)</label>
+                        <input name="customerName" value={form.customerName} onChange={handleChange}
+                          className="w-full rounded-xl border border-blue-200 focus:border-blue-500 focus:ring focus:ring-blue-200 px-3 py-2 text-sm bg-white" />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Register button — separate, below search */}
+                  <div className="border-t border-blue-100 pt-2">
+                    <p className="text-[10px] text-slate-400 font-medium mb-1.5">มาครั้งแรก ยังไม่มีข้อมูลในระบบ?</p>
+                    <button type="button" onClick={() => setShowRegister(true)}
+                      className="w-full flex items-center justify-center gap-2 py-2.5 text-sm font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-500 hover:text-white border-2 border-emerald-300 hover:border-emerald-500 rounded-xl transition-all">
+                      <UserPlus className="w-4 h-4" /> ลงทะเบียนลูกค้าใหม่
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* ── NEW CUSTOMER: simple manual entry, NO HN required, NOT saved to records ── */}
+              {custMode === 'new' && (
+                <div className="space-y-2.5">
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 flex items-center gap-2">
+                    <UserPlus className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    <p className="text-[11px] text-amber-700 font-medium">กรอกข้อมูลเบื้องต้นสำหรับนัดหมาย (ไม่สร้างประวัติในระบบ)</p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 mb-1">ชื่อ-นามสกุล <span className="text-red-500">*</span></label>
+                    <input name="customerName" value={form.customerName} onChange={handleChange} required placeholder="ชื่อผู้รับบริการ"
+                      className="w-full rounded-xl border border-amber-200 focus:border-amber-400 focus:ring focus:ring-amber-100 px-3 py-2.5 text-sm bg-white" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 mb-1">เบอร์โทรศัพท์ <span className="text-red-500">*</span></label>
+                    <input name="phoneNumber" value={form.phoneNumber} onChange={handleChange} required placeholder="08x-xxx-xxxx"
+                      className="w-full rounded-xl border border-amber-200 focus:border-amber-400 focus:ring focus:ring-amber-100 px-3 py-2.5 text-sm bg-white" />
+                  </div>
+                </div>
+              )}
+
+              {hnWarn && <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 font-medium">{hnWarn}</p>}
+            </div>
+
+            {/* ── Appointment Details ── */}
+            <div className="space-y-3">
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b pb-1">รายละเอียดนัดหมาย</h3>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1">วันที่ <span className="text-red-500">*</span></label>
+                  <input type="date" name="bookingDate" value={form.bookingDate} onChange={handleChange} required
+                    className="w-full rounded-xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-200 px-3 py-2 text-sm bg-white" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1">เวลา <span className="text-red-500">*</span></label>
+                  <select name="bookingTime" value={form.bookingTime} onChange={handleChange} required
+                    className="w-full rounded-xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-200 px-3 py-2 text-sm bg-white">
+                    <option value="">เลือกเวลา</option>
+                    {TIME_SLOTS.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+              </div>
               <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1">วันที่ <span className="text-red-500">*</span></label>
-                <input type="date" name="bookingDate" value={form.bookingDate} onChange={handleChange} required
+                <label className="block text-xs font-bold text-slate-600 mb-1">หัตถการ <span className="text-red-500">*</span></label>
+                <input name="procedure" value={form.procedure} onChange={handleChange} required placeholder="ระบุบริการที่ต้องการรับ"
                   className="w-full rounded-xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-200 px-3 py-2 text-sm bg-white" />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1">เวลา <span className="text-red-500">*</span></label>
-                <select name="bookingTime" value={form.bookingTime} onChange={handleChange} required
-                  className="w-full rounded-xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-200 px-3 py-2 text-sm bg-white">
-                  <option value="">เลือกเวลา</option>
-                  {TIME_SLOTS.map(t => <option key={t} value={t}>{t}</option>)}
-                </select>
+                <label className="block text-xs font-bold text-slate-600 mb-1">ชื่อผู้นัด</label>
+                <input name="bookerName" value={form.bookerName} onChange={handleChange} placeholder="ชื่อผู้ดำเนินการจอง"
+                  className="w-full rounded-xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-200 px-3 py-2 text-sm bg-white" />
               </div>
             </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1">หัตถการ <span className="text-red-500">*</span></label>
-              <input name="procedure" value={form.procedure} onChange={handleChange} required placeholder="ระบุบริการที่ต้องการรับ"
-                className="w-full rounded-xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-200 px-3 py-2 text-sm bg-white" />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1">ชื่อผู้นัด</label>
-              <input name="bookerName" value={form.bookerName} onChange={handleChange} placeholder="ชื่อผู้ดำเนินการจอง"
-                className="w-full rounded-xl border border-slate-200 focus:border-blue-500 focus:ring focus:ring-blue-200 px-3 py-2 text-sm bg-white" />
-            </div>
+          </form>
+          <div className="border-t border-slate-100 p-4 bg-gray-50 flex justify-end gap-3 shrink-0 rounded-b-3xl">
+            <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl text-slate-600 font-bold hover:bg-slate-200 transition-colors">ยกเลิก</button>
+            <button onClick={handleSubmit} disabled={saving || hnWarn.startsWith('⚠')}
+              className={`px-6 py-2.5 rounded-xl text-white font-bold shadow-md transition-all flex items-center gap-2 ${saving ? 'bg-blue-300 cursor-not-allowed' : 'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:shadow-lg active:scale-[0.98]'}`}>
+              {saving ? <><Sparkles className="animate-spin w-4 h-4" /> กำลังบันทึก...</> : <><Save className="w-4 h-4" /> ยืนยันการจอง</>}
+            </button>
           </div>
-        </form>
-        <div className="border-t border-slate-100 p-4 bg-gray-50 flex justify-end gap-3 shrink-0 rounded-b-3xl">
-          <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl text-slate-600 font-bold hover:bg-slate-200 transition-colors">ยกเลิก</button>
-          <button onClick={handleSubmit} disabled={saving || hnWarn.startsWith('⚠')}
-            className={`px-6 py-2.5 rounded-xl text-white font-bold shadow-md transition-all flex items-center gap-2 ${saving ? 'bg-blue-300 cursor-not-allowed' : 'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:shadow-lg active:scale-[0.98]'}`}>
-            {saving ? <><Sparkles className="animate-spin w-4 h-4" /> กำลังบันทึก...</> : <><Save className="w-4 h-4" /> ยืนยันการจอง</>}
-          </button>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 
@@ -1149,6 +1373,19 @@ const PatientsTab = ({ records, user, isOffline, onAddBookingForPatient }) => {
   const [editBeforeImages, setEditBeforeImages] = useState([]);
   const [editAfterImages, setEditAfterImages] = useState([]);
   const [activeSubTab, setActiveSubTab] = useState('search');
+  // Inline add-procedure panel inside patient modal
+  const [addProcPatient, setAddProcPatient] = useState(null); // {fullName, hn, phone}
+  const [procForm, setProcForm] = useState({ serviceDate: today, service: '', price: '', note: '' });
+  const [procBefore, setProcBefore] = useState([]); const [procBeforePrev, setProcBeforePrev] = useState([]);
+  const [procAfter, setProcAfter] = useState([]);  const [procAfterPrev, setProcAfterPrev] = useState([]);
+  const [procStaff, setProcStaff] = useState({ sale: '', assistant: '', appointedBy: '', doctor: '' });
+  const [procSubmitting, setProcSubmitting] = useState(false);
+  const procBeforeRef = useRef(null);
+  const procAfterRef = useRef(null);
+  // Edit patient info (name/phone) inline
+  const [editPatientHN, setEditPatientHN] = useState(null); // HN of patient being edited
+  const [editPatientForm, setEditPatientForm] = useState({ fullName: '', phone: '' });
+  const [editPatientSaving, setEditPatientSaving] = useState(false);
 
   useEffect(() => {
     const handleKey = (e) => {
@@ -1219,6 +1456,63 @@ const PatientsTab = ({ records, user, isOffline, onAddBookingForPatient }) => {
   };
 
   const resetImages = () => { setBeforeFiles([]); setBeforePreviews([]); setAfterFiles([]); setAfterPreviews([]); setEditBeforeImages([]); setEditAfterImages([]); };
+
+  // ── Add procedure helpers ──
+  const resetProc = () => { setProcForm({ serviceDate: today, service: '', price: '', note: '' }); setProcStaff({ sale: '', assistant: '', appointedBy: '', doctor: '' }); setProcBefore([]); setProcBeforePrev([]); setProcAfter([]); setProcAfterPrev([]); };
+
+  const handleProcImageAdd = (e, type) => {
+    const files = Array.from(e.target.files).filter(f => f.type.startsWith('image/'));
+    const curr = type === 'before' ? procBefore.length : procAfter.length;
+    if (curr + files.length > 5) { setAlertMessage('สามารถอัปโหลดได้สูงสุด 5 รูปต่อประเภท'); return; }
+    if (type === 'before') {
+      setProcBefore(p => [...p, ...files]);
+      files.forEach(f => { const r = new FileReader(); r.onloadend = () => setProcBeforePrev(p => [...p, r.result]); r.readAsDataURL(f); });
+    } else {
+      setProcAfter(p => [...p, ...files]);
+      files.forEach(f => { const r = new FileReader(); r.onloadend = () => setProcAfterPrev(p => [...p, r.result]); r.readAsDataURL(f); });
+    }
+    e.target.value = '';
+  };
+
+  const handleProcSubmit = async () => {
+    if (!procForm.service || !procForm.serviceDate) return;
+    setProcSubmitting(true);
+    try {
+      const b64Before = await Promise.all(procBefore.map(f => compressImage(f)));
+      const b64After  = await Promise.all(procAfter.map(f => compressImage(f)));
+      await addDoc(RECORDS_PATH(), {
+        fullName: addProcPatient.fullName, hn: addProcPatient.hn, phone: addProcPatient.phone || '',
+        serviceDate: procForm.serviceDate, service: procForm.service,
+        price: procForm.price ? Number(procForm.price) : null,
+        note: procForm.note || '',
+        sale: procStaff.sale || '', assistant: procStaff.assistant || '',
+        appointedBy: procStaff.appointedBy || '', doctor: procStaff.doctor || '',
+        imagesBefore: b64Before, imagesAfter: b64After, images: [],
+        createdBy: user?.uid || 'anonymous', createdAt: serverTimestamp(),
+      });
+      resetProc();
+      setAddProcPatient(null);
+    } catch (err) { setAlertMessage('เกิดข้อผิดพลาด: ' + err.message); }
+    finally { setProcSubmitting(false); }
+  };
+
+  // ── Edit patient info helpers ──
+  const saveEditPatient = async () => {
+    if (!editPatientHN || !editPatientForm.fullName) return;
+    setEditPatientSaving(true);
+    try {
+      // Update ALL records that belong to this HN
+      const toUpdate = records.filter(r => r.hn === editPatientHN);
+      await Promise.all(toUpdate.map(r =>
+        updateDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'patient_records', r.id), {
+          fullName: editPatientForm.fullName.trim(),
+          phone: editPatientForm.phone.trim(),
+        })
+      ));
+      setEditPatientHN(null);
+    } catch (err) { setAlertMessage('เกิดข้อผิดพลาด: ' + err.message); }
+    finally { setEditPatientSaving(false); }
+  };
   const staffRequired = !formData.sale || !formData.assistant || !formData.doctor;
 
   const handleSubmit = async (e) => {
@@ -1301,73 +1595,69 @@ const PatientsTab = ({ records, user, isOffline, onAddBookingForPatient }) => {
       </div>
 
       {activeSubTab === 'add' && (
-        <div className="bg-white rounded-2xl shadow-xl border border-purple-100 overflow-hidden max-w-2xl mx-auto">
-          <div className="bg-purple-50 border-b border-purple-100 px-6 py-4">
-            <h2 className="text-lg font-bold text-purple-900 flex items-center"><FileEdit className="w-5 h-5 mr-2 text-purple-600" /> บันทึกประวัติใหม่</h2>
+        <div className="bg-white rounded-2xl shadow-xl border border-purple-100 overflow-hidden max-w-md mx-auto">
+          <div className="bg-gradient-to-r from-purple-700 to-purple-500 px-6 py-4 flex items-center gap-3">
+            <div className="p-2 bg-white/20 rounded-xl"><UserPlus className="w-5 h-5 text-white" /></div>
+            <div>
+              <h2 className="text-base font-bold text-white">ลงทะเบียนลูกค้าใหม่</h2>
+              <p className="text-purple-200 text-[11px]">บันทึกข้อมูลเข้าระบบประวัติลูกค้า</p>
+            </div>
           </div>
-          <form onSubmit={handleSubmit} className="p-6 space-y-4">
-            <div className="space-y-3">
-              <h3 className="text-xs font-bold text-purple-400 uppercase tracking-wider border-b pb-1">ข้อมูลลูกค้า</h3>
-              <div>
-                <label className="block text-sm font-semibold text-purple-900 mb-1">ชื่อ-นามสกุล <span className="text-red-500">*</span></label>
-                <div className="relative"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><User className="h-4 w-4 text-purple-400" /></div>
-                  <input type="text" name="fullName" value={formData.fullName} onChange={handleInputChange} required placeholder="เช่น สมหญิง สวยงาม"
-                    className="pl-10 w-full rounded-lg border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2 text-sm text-slate-700 bg-gray-50/50" /></div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-semibold text-purple-900 mb-1">เลข HN <span className="text-red-500">*</span></label>
-                  <div className="relative"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Hash className="h-4 w-4 text-purple-400" /></div>
-                    <input type="text" name="hn" value={formData.hn} onChange={handleInputChange} required placeholder="HN12345"
-                      className="pl-10 w-full rounded-lg border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2 text-sm text-slate-700 bg-gray-50/50" /></div>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-purple-900 mb-1">เบอร์โทรศัพท์</label>
-                  <div className="relative"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Phone className="h-4 w-4 text-purple-400" /></div>
-                    <input type="tel" name="phone" value={formData.phone} onChange={handleInputChange} placeholder="08X-XXX-XXXX"
-                      className="pl-10 w-full rounded-lg border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2 text-sm text-slate-700 bg-gray-50/50" /></div>
-                </div>
+          <div className="p-6 space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-purple-900 mb-1.5">ชื่อ-นามสกุล <span className="text-red-500">*</span></label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><User className="h-4 w-4 text-purple-400" /></div>
+                <input type="text" name="fullName" value={formData.fullName} onChange={handleInputChange} required placeholder="เช่น สมหญิง สวยงาม"
+                  className="pl-10 w-full rounded-xl border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2.5 text-sm text-slate-700" />
               </div>
             </div>
-            <div className="space-y-3 pt-2">
-              <h3 className="text-xs font-bold text-purple-400 uppercase tracking-wider border-b pb-1">ข้อมูลเข้ารับบริการ</h3>
-              <div>
-                <label className="block text-sm font-semibold text-purple-900 mb-1">วันที่เข้ารับบริการ <span className="text-red-500">*</span></label>
-                <div className="relative"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Calendar className="h-4 w-4 text-purple-400" /></div>
-                  <input type="date" name="serviceDate" value={formData.serviceDate} onChange={handleInputChange} required
-                    className="pl-10 w-full rounded-lg border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2 text-sm text-slate-700 bg-gray-50/50" /></div>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-purple-900 mb-1">รายการหัตถการ <span className="text-red-500">*</span></label>
-                <div className="relative"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><FileText className="h-4 w-4 text-purple-400" /></div>
-                  <input type="text" name="service" value={formData.service} onChange={handleInputChange} required placeholder="เช่น ฉีดโบท็อกซ์กราม"
-                    className="pl-10 w-full rounded-lg border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2 text-sm text-slate-700 bg-gray-50/50" /></div>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-purple-900 mb-1">ราคา (บาท)</label>
-                <div className="relative"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><DollarSign className="h-4 w-4 text-purple-400" /></div>
-                  <input type="number" name="price" value={formData.price} onChange={handleInputChange} min="0" placeholder="ไม่ระบุ"
-                    className="pl-10 w-full rounded-lg border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2 text-sm text-slate-700 bg-gray-50/50" /></div>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-purple-900 mb-1">หมายเหตุเพิ่มเติม</label>
-                <textarea name="note" value={formData.note} onChange={handleInputChange} rows="2"
-                  className="w-full rounded-lg border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2 text-sm text-slate-700 bg-gray-50/50 resize-none" />
+            <div>
+              <label className="block text-sm font-semibold text-purple-900 mb-1.5">เลข HN <span className="text-red-500">*</span></label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Hash className="h-4 w-4 text-purple-400" /></div>
+                <input type="text" name="hn" value={formData.hn} onChange={handleInputChange} required placeholder="HN12345"
+                  className="pl-10 w-full rounded-xl border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2.5 text-sm text-slate-700" />
               </div>
             </div>
-            <StaffFields theme="purple" formData={formData} handleInputChange={handleInputChange} />
-            <div className="pt-2">
-              <h3 className="text-xs font-bold text-purple-400 uppercase tracking-wider border-b pb-1 mb-3">รูปภาพก่อน / หลังทำ</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <ImageUploadBlock type="before" existingImages={[]} setExistingImages={() => {}} newPreviews={beforePreviews} onRemoveNew={removeNewImage} onClickAdd={() => fileBeforeRef.current?.click()} onLightbox={(imgs, idx) => setLightbox({ images: imgs, index: idx })} />
-                <ImageUploadBlock type="after" existingImages={[]} setExistingImages={() => {}} newPreviews={afterPreviews} onRemoveNew={removeNewImage} onClickAdd={() => fileAfterRef.current?.click()} onLightbox={(imgs, idx) => setLightbox({ images: imgs, index: idx })} />
+            <div>
+              <label className="block text-sm font-semibold text-purple-900 mb-1.5">เบอร์โทรศัพท์</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Phone className="h-4 w-4 text-purple-400" /></div>
+                <input type="tel" name="phone" value={formData.phone} onChange={handleInputChange} placeholder="08X-XXX-XXXX"
+                  className="pl-10 w-full rounded-xl border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2.5 text-sm text-slate-700" />
               </div>
             </div>
-            <button type="submit" disabled={submitting || !formData.fullName || !formData.hn || !formData.service || !formData.serviceDate || staffRequired}
-              className={`w-full py-3 px-4 mt-2 rounded-xl text-white font-bold shadow-md transition-all flex justify-center items-center ${submitting || !formData.fullName || !formData.hn || !formData.service || !formData.serviceDate || staffRequired ? 'bg-purple-300 cursor-not-allowed' : 'bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:shadow-lg active:scale-[0.98]'}`}>
-              {submitting ? <><Sparkles className="animate-spin w-5 h-5 mr-2" /> กำลังส่งข้อมูล...</> : 'บันทึกประวัติ'}
+            <div className="bg-purple-50 rounded-xl p-3 border border-purple-100">
+              <p className="text-[11px] text-purple-600 font-medium">✅ ข้อมูลจะถูกบันทึกในระบบและสามารถค้นหา HN ได้ทันที</p>
+            </div>
+            <button
+              onClick={async () => {
+                if (!formData.fullName || !formData.hn) return;
+                setSubmitting(true);
+                try {
+                  await addDoc(RECORDS_PATH(), {
+                    fullName: formData.fullName.trim(),
+                    hn: formData.hn.trim(),
+                    phone: formData.phone?.trim() || '',
+                    serviceDate: today,
+                    service: 'ลงทะเบียนลูกค้าใหม่',
+                    price: null, note: '', sale: '', assistant: '', appointedBy: '', doctor: '',
+                    imagesBefore: [], imagesAfter: [], images: [],
+                    createdBy: user?.uid || 'anonymous',
+                    createdAt: serverTimestamp(),
+                  });
+                  setFormData(EMPTY_RECORD(today));
+                  setActiveSubTab('search');
+                } catch (err) { setAlertMessage('เกิดข้อผิดพลาด: ' + err.message); }
+                finally { setSubmitting(false); }
+              }}
+              disabled={submitting || !formData.fullName || !formData.hn}
+              className={`w-full py-3 px-4 rounded-xl text-white font-bold shadow-md transition-all flex justify-center items-center gap-2
+                ${submitting || !formData.fullName || !formData.hn ? 'bg-purple-300 cursor-not-allowed' : 'bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:shadow-lg active:scale-[0.98]'}`}>
+              {submitting ? <><Sparkles className="animate-spin w-4 h-4" /> กำลังบันทึก...</> : <><UserPlus className="w-4 h-4" /> ลงทะเบียน</>}
             </button>
-          </form>
+          </div>
         </div>
       )}
 
@@ -1397,25 +1687,32 @@ const PatientsTab = ({ records, user, isOffline, onAddBookingForPatient }) => {
                 const totalSpend = patient.records.reduce((s, r) => s + (r.price || 0), 0);
                 const totalImages = patient.records.reduce((s, r) => s + getRecordImages(r).length, 0);
                 return (
-                  <div key={patient.hn} onClick={() => setPatientModalHN(patient.hn)} className="bg-white rounded-2xl border border-slate-100 hover:border-purple-300 hover:shadow-md transition-all cursor-pointer active:scale-[0.99] group">
+                  <div key={patient.hn} className="bg-white rounded-2xl border border-slate-100 hover:border-purple-300 hover:shadow-md transition-all group">
                     <div className="px-4 py-3.5 flex items-center gap-3">
-                      <div className="w-11 h-11 bg-purple-50 group-hover:bg-purple-600 rounded-full flex items-center justify-center shrink-0 transition-all duration-200 border border-purple-100">
+                      <div onClick={() => setPatientModalHN(patient.hn)} className="w-11 h-11 bg-purple-50 group-hover:bg-purple-600 rounded-full flex items-center justify-center shrink-0 transition-all duration-200 border border-purple-100 cursor-pointer">
                         <User className="w-5 h-5 text-purple-400 group-hover:text-white transition-colors" />
                       </div>
-                      <div className="flex-grow min-w-0">
+                      <div className="flex-grow min-w-0 cursor-pointer" onClick={() => setPatientModalHN(patient.hn)}>
                         <h3 className="text-sm font-bold text-slate-800 group-hover:text-purple-700 transition-colors truncate">{patient.fullName}</h3>
                         <div className="flex flex-wrap items-center gap-x-2 mt-0.5">
                           <span className="flex items-center text-[11px] text-slate-400 font-medium"><Hash className="w-2.5 h-2.5 mr-0.5 text-purple-300" />{patient.hn}</span>
                           {patient.phone && <><span className="text-slate-200">·</span><span className="flex items-center text-[11px] text-slate-400 font-medium"><Phone className="w-2.5 h-2.5 mr-0.5 text-purple-300" />{patient.phone}</span></>}
                         </div>
                       </div>
-                      <div className="shrink-0 text-right">
-                        {totalSpend > 0 ? <p className="text-base font-bold text-green-600 leading-tight">{fmtMoney(totalSpend)}</p> : <p className="text-xs text-slate-300 font-medium">-</p>}
-                        <div className="flex items-center justify-end gap-1 mt-0.5">
-                          <span className="text-[11px] text-slate-400">{patient.count} ครั้ง</span>
-                          {totalImages > 0 && <><span className="text-slate-200">·</span><ImageIcon className="w-2.5 h-2.5 text-purple-300" /><span className="text-[11px] text-slate-400">{totalImages}</span></>}
-                          <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-purple-500 transition-colors ml-0.5" />
+                      <div className="shrink-0 flex items-center gap-2">
+                        <div className="text-right cursor-pointer" onClick={() => setPatientModalHN(patient.hn)}>
+                          {totalSpend > 0 ? <p className="text-base font-bold text-green-600 leading-tight">{fmtMoney(totalSpend)}</p> : <p className="text-xs text-slate-300 font-medium">-</p>}
+                          <div className="flex items-center justify-end gap-1 mt-0.5">
+                            <span className="text-[11px] text-slate-400">{patient.count} ครั้ง</span>
+                            {totalImages > 0 && <><span className="text-slate-200">·</span><ImageIcon className="w-2.5 h-2.5 text-purple-300" /><span className="text-[11px] text-slate-400">{totalImages}</span></>}
+                          </div>
                         </div>
+                        <button
+                          onClick={e => { e.stopPropagation(); setEditPatientHN(patient.hn); setEditPatientForm({ fullName: patient.fullName, phone: patient.phone || '' }); }}
+                          className="p-2 text-slate-300 hover:text-purple-600 hover:bg-purple-50 rounded-xl transition-colors shrink-0">
+                          <FileEdit className="w-4 h-4" />
+                        </button>
+                        <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-purple-500 transition-colors cursor-pointer" onClick={() => setPatientModalHN(patient.hn)} />
                       </div>
                     </div>
                   </div>
@@ -1475,7 +1772,7 @@ const PatientsTab = ({ records, user, isOffline, onAddBookingForPatient }) => {
                   <button onClick={() => setPatientModalHN(null)} className="p-2 hover:bg-white/20 rounded-full transition-colors shrink-0"><X className="w-5 h-5 text-white" /></button>
                 </div>
                 <div className="grid grid-cols-2 gap-2 mt-3">
-                  <button onClick={() => { setFollowUpCustomer({ fullName: modalPatient.fullName, hn: modalPatient.hn, phone: modalPatient.phone || '' }); setFormData({ ...EMPTY_RECORD(today), fullName: modalPatient.fullName, hn: modalPatient.hn, phone: modalPatient.phone || '' }); resetImages(); setActiveSubTab('add'); setPatientModalHN(null); }}
+                  <button onClick={() => { resetProc(); setProcForm(f => ({ ...f, serviceDate: today })); setAddProcPatient({ fullName: modalPatient.fullName, hn: modalPatient.hn, phone: modalPatient.phone || '' }); setPatientModalHN(null); }}
                     className="bg-white text-purple-700 hover:bg-purple-50 text-sm font-bold py-2.5 rounded-xl transition-colors flex items-center justify-center shadow-sm">
                     <Plus className="w-4 h-4 mr-2" /> เพิ่มประวัติหัตถการ
                   </button>
@@ -1600,6 +1897,120 @@ const PatientsTab = ({ records, user, isOffline, onAddBookingForPatient }) => {
               <button type="submit" form="editRecordForm" disabled={submitting || !formData.service || !formData.serviceDate || staffRequired}
                 className={`px-6 py-2.5 rounded-xl text-white font-bold shadow-md transition-all flex items-center ${submitting || !formData.service || !formData.serviceDate || staffRequired ? 'bg-blue-300 cursor-not-allowed' : 'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:shadow-lg active:scale-[0.98]'}`}>
                 {submitting ? <><Sparkles className="animate-spin w-5 h-5 mr-2" /> กำลังบันทึก...</> : 'บันทึกการแก้ไข'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Add Procedure Modal (inline, from patient profile) ── */}
+      {addProcPatient && (
+        <>
+          <input type="file" ref={procBeforeRef} onChange={e => handleProcImageAdd(e,'before')} accept="image/*" multiple className="hidden" />
+          <input type="file" ref={procAfterRef}  onChange={e => handleProcImageAdd(e,'after')}  accept="image/*" multiple className="hidden" />
+          <div className="fixed inset-0 bg-purple-900/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+            <div className="bg-white w-full sm:max-w-2xl rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[92vh]">
+              <div className="bg-gradient-to-r from-purple-700 to-purple-500 px-6 py-4 flex items-center justify-between text-white shrink-0 rounded-t-3xl">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-white/20 rounded-xl"><FileEdit className="w-5 h-5" /></div>
+                  <div>
+                    <h2 className="text-base font-bold leading-tight">เพิ่มประวัติหัตถการ</h2>
+                    <p className="text-purple-200 text-[11px]">{addProcPatient.fullName} · {addProcPatient.hn}</p>
+                  </div>
+                </div>
+                <button onClick={() => { setAddProcPatient(null); resetProc(); }} className="p-1.5 hover:bg-white/20 rounded-full transition-colors"><X className="w-5 h-5" /></button>
+              </div>
+              <div className="overflow-y-auto flex-grow p-5 space-y-4">
+                {/* Service details */}
+                <div className="space-y-3">
+                  <h3 className="text-xs font-bold text-purple-400 uppercase tracking-wider border-b pb-1">รายละเอียดหัตถการ</h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-1">วันที่ <span className="text-red-500">*</span></label>
+                      <input type="date" value={procForm.serviceDate} onChange={e => setProcForm(f => ({ ...f, serviceDate: e.target.value }))} required
+                        className="w-full rounded-xl border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2 text-sm text-slate-700" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-1">ยอดชำระ (บาท)</label>
+                      <div className="relative"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><DollarSign className="h-4 w-4 text-purple-400" /></div>
+                        <input type="number" value={procForm.price} onChange={e => setProcForm(f => ({ ...f, price: e.target.value }))} min="0" placeholder="ไม่ระบุ"
+                          className="pl-10 w-full rounded-xl border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2 text-sm text-slate-700" /></div>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1">รายการหัตถการ <span className="text-red-500">*</span></label>
+                    <div className="relative"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><FileText className="h-4 w-4 text-purple-400" /></div>
+                      <input type="text" value={procForm.service} onChange={e => setProcForm(f => ({ ...f, service: e.target.value }))} required placeholder="เช่น ฉีดโบท็อกซ์กราม"
+                        className="pl-10 w-full rounded-xl border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2 text-sm text-slate-700" /></div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1">หมายเหตุ</label>
+                    <textarea value={procForm.note} onChange={e => setProcForm(f => ({ ...f, note: e.target.value }))} rows="2" placeholder="หมายเหตุเพิ่มเติม"
+                      className="w-full rounded-xl border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2 text-sm text-slate-700 resize-none" />
+                  </div>
+                </div>
+                <StaffFields theme="purple" formData={procStaff} handleInputChange={e => setProcStaff(s => ({ ...s, [e.target.name]: e.target.value }))} />
+                {/* Images */}
+                <div>
+                  <h3 className="text-xs font-bold text-purple-400 uppercase tracking-wider border-b pb-1 mb-3">รูปภาพก่อน / หลังทำ</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <ImageUploadBlock type="before" existingImages={[]} setExistingImages={() => {}} newPreviews={procBeforePrev}
+                      onRemoveNew={(_, idx) => { setProcBefore(p => p.filter((__, i) => i !== idx)); setProcBeforePrev(p => p.filter((__, i) => i !== idx)); }}
+                      onClickAdd={() => procBeforeRef.current?.click()} onLightbox={(imgs, idx) => setLightbox({ images: imgs, index: idx })} />
+                    <ImageUploadBlock type="after" existingImages={[]} setExistingImages={() => {}} newPreviews={procAfterPrev}
+                      onRemoveNew={(_, idx) => { setProcAfter(p => p.filter((__, i) => i !== idx)); setProcAfterPrev(p => p.filter((__, i) => i !== idx)); }}
+                      onClickAdd={() => procAfterRef.current?.click()} onLightbox={(imgs, idx) => setLightbox({ images: imgs, index: idx })} />
+                  </div>
+                </div>
+              </div>
+              <div className="border-t border-slate-100 p-4 bg-gray-50 flex justify-end gap-3 shrink-0 rounded-b-3xl">
+                <button type="button" onClick={() => { setAddProcPatient(null); resetProc(); }} className="px-5 py-2.5 rounded-xl text-slate-600 font-bold hover:bg-slate-200 transition-colors">ยกเลิก</button>
+                <button onClick={handleProcSubmit} disabled={procSubmitting || !procForm.service || !procForm.serviceDate}
+                  className={`px-6 py-2.5 rounded-xl text-white font-bold shadow-md transition-all flex items-center gap-2
+                    ${procSubmitting || !procForm.service || !procForm.serviceDate ? 'bg-purple-300 cursor-not-allowed' : 'bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:shadow-lg active:scale-[0.98]'}`}>
+                  {procSubmitting ? <><Sparkles className="animate-spin w-4 h-4" /> กำลังบันทึก...</> : <><Save className="w-4 h-4" /> บันทึกประวัติ</>}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ── Edit Patient Info Modal ── */}
+      {editPatientHN && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden">
+            <div className="bg-gradient-to-r from-purple-700 to-purple-500 px-5 py-4 flex items-center justify-between text-white">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-white/20 rounded-xl"><FileEdit className="w-4 h-4" /></div>
+                <h3 className="font-bold text-base">แก้ไขข้อมูลลูกค้า</h3>
+              </div>
+              <button onClick={() => setEditPatientHN(null)} className="p-1.5 hover:bg-white/20 rounded-full transition-colors"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="p-5 space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1.5">ชื่อ-นามสกุล <span className="text-red-500">*</span></label>
+                <div className="relative"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><User className="h-4 w-4 text-purple-400" /></div>
+                  <input autoFocus type="text" value={editPatientForm.fullName}
+                    onChange={e => setEditPatientForm(f => ({ ...f, fullName: e.target.value }))}
+                    className="pl-10 w-full rounded-xl border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2.5 text-sm text-slate-700" /></div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1.5">เบอร์โทรศัพท์</label>
+                <div className="relative"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Phone className="h-4 w-4 text-purple-400" /></div>
+                  <input type="tel" value={editPatientForm.phone}
+                    onChange={e => setEditPatientForm(f => ({ ...f, phone: e.target.value }))}
+                    placeholder="08X-XXX-XXXX"
+                    className="pl-10 w-full rounded-xl border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2.5 text-sm text-slate-700" /></div>
+              </div>
+              <p className="text-[11px] text-slate-400">การแก้ไขจะอัปเดตทุก record ของ HN นี้</p>
+            </div>
+            <div className="px-5 pb-5 flex gap-3">
+              <button onClick={() => setEditPatientHN(null)} className="flex-1 py-2.5 rounded-xl text-slate-600 font-bold bg-slate-100 hover:bg-slate-200 transition-colors text-sm">ยกเลิก</button>
+              <button onClick={saveEditPatient} disabled={editPatientSaving || !editPatientForm.fullName}
+                className={`flex-1 py-2.5 rounded-xl text-white font-bold transition-all text-sm flex items-center justify-center gap-2 shadow-md
+                  ${editPatientSaving || !editPatientForm.fullName ? 'bg-purple-300 cursor-not-allowed' : 'bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 active:scale-[0.98]'}`}>
+                {editPatientSaving ? <><Sparkles className="animate-spin w-4 h-4" /> กำลังบันทึก...</> : <><Save className="w-4 h-4" /> บันทึก</>}
               </button>
             </div>
           </div>

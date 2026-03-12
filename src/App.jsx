@@ -479,7 +479,7 @@ const BookingFormModal = ({ booking, patients, onClose, onSave, isOffline, allBo
                     <p className="text-[10px] text-slate-400 font-medium mb-1.5">มาครั้งแรก ยังไม่มีข้อมูลในระบบ?</p>
                     <button type="button" onClick={() => setShowRegister(true)}
                       className="w-full flex items-center justify-center gap-2 py-2.5 text-sm font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-500 hover:text-white border-2 border-emerald-300 hover:border-emerald-500 rounded-xl transition-all">
-                      <UserPlus className="w-4 h-4" /> ลงทะเบียนลูกค้าใหม่
+                      <UserPlus className="w-4 h-4" /> ลงทะเบียนลที่มี HN
                     </button>
                   </div>
                 </div>
@@ -1599,7 +1599,7 @@ const PatientsTab = ({ records, user, isOffline, onAddBookingForPatient }) => {
           <div className="bg-gradient-to-r from-purple-700 to-purple-500 px-6 py-4 flex items-center gap-3">
             <div className="p-2 bg-white/20 rounded-xl"><UserPlus className="w-5 h-5 text-white" /></div>
             <div>
-              <h2 className="text-base font-bold text-white">ลงทะเบียนลูกค้าใหม่</h2>
+              <h2 className="text-base font-bold text-white">ลงทะเบียนลที่มี HN</h2>
               <p className="text-purple-200 text-[11px]">บันทึกข้อมูลเข้าระบบประวัติลูกค้า</p>
             </div>
           </div>
@@ -1641,7 +1641,7 @@ const PatientsTab = ({ records, user, isOffline, onAddBookingForPatient }) => {
                     hn: formData.hn.trim(),
                     phone: formData.phone?.trim() || '',
                     serviceDate: today,
-                    service: 'ลงทะเบียนลูกค้าใหม่',
+                    service: 'ลงทะเบียนลที่มี HN',
                     price: null, note: '', sale: '', assistant: '', appointedBy: '', doctor: '',
                     imagesBefore: [], imagesAfter: [], images: [],
                     createdBy: user?.uid || 'anonymous',

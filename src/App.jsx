@@ -58,6 +58,16 @@ const EMPTY_BOOKING = (date = '') => ({
 
 const fmt = (d) => d ? new Date(d).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' }) : '';
 const fmtMoney = (n) => new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(n || 0);
+
+// Format YYYY-MM-DD → วัน/เดือน/คศ (พ.ศ. ไทย) เช่น 12/03/2569
+const fmtDateTH = (d) => {
+  if (!d) return '-';
+  const [y, m, day] = d.split('-');
+  const be = parseInt(y) + 543;
+  return `${day}/${m}/${be}`;
+};
+// Format time with น. เช่น 10:00 น.
+const fmtTimeTH = (t) => t ? `${t} น.` : '-';
 const getRecordImages = (r) => {
   const b = r.imagesBefore || []; const a = r.imagesAfter || [];
   return b.length || a.length ? [...b, ...a] : r.images || [];
@@ -223,7 +233,7 @@ const RegisterPatientModal = ({ onClose, onRegistered }) => {
           <div className="flex items-center gap-2.5">
             <div className="p-2 bg-white/20 rounded-xl"><UserPlus className="w-5 h-5" /></div>
             <div>
-              <h3 className="font-bold text-base leading-tight">ลงทะเบียนลที่มี HN</h3>
+              <h3 className="font-bold text-base leading-tight">ลงทะเบียนลูกค้าใหม่</h3>
               <p className="text-emerald-100 text-[10px]">บันทึกข้อมูลเข้าระบบประวัติลูกค้า</p>
             </div>
           </div>
@@ -479,7 +489,7 @@ const BookingFormModal = ({ booking, patients, onClose, onSave, isOffline, allBo
                     <p className="text-[10px] text-slate-400 font-medium mb-1.5">มาครั้งแรก ยังไม่มีข้อมูลในระบบ?</p>
                     <button type="button" onClick={() => setShowRegister(true)}
                       className="w-full flex items-center justify-center gap-2 py-2.5 text-sm font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-500 hover:text-white border-2 border-emerald-300 hover:border-emerald-500 rounded-xl transition-all">
-                      <UserPlus className="w-4 h-4" /> ลงทะเบียนลที่มี HN
+                      <UserPlus className="w-4 h-4" /> ลงทะเบียนลูกค้าใหม่
                     </button>
                   </div>
                 </div>
@@ -586,8 +596,7 @@ const BookingDetailModal = ({ booking, onClose, onUpdateStatus, onUpdateCallStat
     setUpdating(true);
     await onUpdateStatus(booking.id, { status: 'เลื่อนนัด' });
     const cleanProc = (booking.procedure || '').replace(/\s*\(ย้ายจาก.*?\)/g, '').trim();
-    const parts = booking.bookingDate.split('-');
-    const dispDate = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : booking.bookingDate;
+    const dispDate = fmtDateTH(booking.bookingDate);
     await addDoc(BOOKINGS_PATH(), {
       bookingDate: reschedDate, bookingTime: reschedTime,
       hn: booking.hn || '', customerName: booking.customerName,
@@ -607,7 +616,7 @@ const BookingDetailModal = ({ booking, onClose, onUpdateStatus, onUpdateCallStat
         b.id !== booking.id && String(b.hn || '').toLowerCase() === hn.toLowerCase() &&
         b.bookingDate === nextDate && b.status !== 'ยกเลิกนัด' && b.status !== 'เลื่อนนัด'
       );
-      if (dups.length) { alert(`HN "${hn}" มีนัดในวันที่ ${nextDate} อยู่แล้ว`); return; }
+      if (dups.length) { alert(`HN "${hn}" มีนัดในวันที่ ${fmtDateTH(nextDate)} อยู่แล้ว`); return; }
     }
     setUpdating(true);
     await addDoc(BOOKINGS_PATH(), {
@@ -619,7 +628,7 @@ const BookingDetailModal = ({ booking, onClose, onUpdateStatus, onUpdateCallStat
     });
     setUpdating(false);
     onClose();
-    alert(`✅ จองครั้งถัดไปสำเร็จ!\n${booking.customerName} วันที่ ${nextDate} เวลา ${nextTime}`);
+    alert(`✅ จองครั้งถัดไปสำเร็จ!\n${booking.customerName} วันที่ ${fmtDateTH(nextDate)} เวลา ${fmtTimeTH(nextTime)}`);
   };
 
   return (
@@ -675,7 +684,7 @@ const BookingDetailModal = ({ booking, onClose, onUpdateStatus, onUpdateCallStat
           </div>
           {[
             { Icon: Phone, label: 'เบอร์โทรศัพท์', val: booking.phoneNumber || '-' },
-            { Icon: Calendar, label: 'วันเวลาที่นัด', val: `${booking.bookingDate} @ ${booking.bookingTime}` },
+            { Icon: Calendar, label: 'วันเวลาที่นัด', val: `${fmtDateTH(booking.bookingDate)}  ${fmtTimeTH(booking.bookingTime)}` },
             { Icon: Activity, label: 'หัตถการ', val: booking.procedure || '-' },
             { Icon: UserCheck, label: 'ชื่อผู้นัด', val: booking.bookerName || '-' },
           ].map(({ Icon, label, val }) => (
@@ -810,7 +819,7 @@ const BookingListModal = ({ title, bookings, onClose, onSelectBooking, patients 
                   <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${sc.bg} ${sc.text}`}>{b.status}</span>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-blue-600 font-bold text-sm">{b.bookingTime || '-'}</p>
+                  <p className="text-blue-600 font-bold text-sm">{b.bookingTime ? `${b.bookingTime} น.` : '-'}</p>
                   <ChevronRight className="w-3.5 h-3.5 text-slate-300 mt-1 ml-auto" />
                 </div>
               </div>
@@ -918,7 +927,7 @@ const CalendarView = ({ bookings, patients, onSelectDate, onAddBooking }) => {
                         : `${sc.bg} ${sc.text}`
                       }`}>
                       {newCust && <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" />}
-                      <span className="truncate">{b.bookingTime} {b.customerName}</span>
+                      <span className="truncate">{b.bookingTime} น. {b.customerName}</span>
                     </div>
                   );
                 })}
@@ -1152,7 +1161,7 @@ const DashboardTab = ({ bookings, patients, isOffline, initialBooking, onPending
             <div className="px-5 py-3 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-100 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-blue-600" />
-                <h2 className="font-bold text-gray-800 text-sm">ตารางนัดหมายวันที่ {reportDate}</h2>
+                <h2 className="font-bold text-gray-800 text-sm">ตารางนัดหมายวันที่ {fmtDateTH(reportDate)}</h2>
               </div>
               <div className="flex items-center gap-2">
                 {/* Mini legend */}
@@ -1192,7 +1201,7 @@ const DashboardTab = ({ bookings, patients, isOffline, initialBooking, onPending
                       {/* Time slot number */}
                       <div className="text-slate-300 text-[10px] font-bold w-4 shrink-0 text-center">{idx + 1}</div>
                       <div className={`w-2 h-2 rounded-full shrink-0 ${sc.dot}`} />
-                      <div className="text-blue-700 font-bold text-sm w-12 shrink-0">{b.bookingTime || '?'}</div>
+                      <div className="text-blue-700 font-bold text-sm w-12 shrink-0">{b.bookingTime ? `${b.bookingTime} น.` : '?'}</div>
                       <div className="flex-grow min-w-0">
                         <div className="flex items-center gap-1.5">
                           <p className={`font-bold text-sm truncate transition-colors ${newCust ? 'text-amber-800 group-hover:text-amber-900' : 'text-slate-800 group-hover:text-blue-700'}`}>
@@ -1599,7 +1608,7 @@ const PatientsTab = ({ records, user, isOffline, onAddBookingForPatient }) => {
           <div className="bg-gradient-to-r from-purple-700 to-purple-500 px-6 py-4 flex items-center gap-3">
             <div className="p-2 bg-white/20 rounded-xl"><UserPlus className="w-5 h-5 text-white" /></div>
             <div>
-              <h2 className="text-base font-bold text-white">ลงทะเบียนลที่มี HN</h2>
+              <h2 className="text-base font-bold text-white">ลงทะเบียนลูกค้าใหม่</h2>
               <p className="text-purple-200 text-[11px]">บันทึกข้อมูลเข้าระบบประวัติลูกค้า</p>
             </div>
           </div>
@@ -1641,7 +1650,7 @@ const PatientsTab = ({ records, user, isOffline, onAddBookingForPatient }) => {
                     hn: formData.hn.trim(),
                     phone: formData.phone?.trim() || '',
                     serviceDate: today,
-                    service: 'ลงทะเบียนลที่มี HN',
+                    service: 'ลงทะเบียนลูกค้าใหม่',
                     price: null, note: '', sale: '', assistant: '', appointedBy: '', doctor: '',
                     imagesBefore: [], imagesAfter: [], images: [],
                     createdBy: user?.uid || 'anonymous',

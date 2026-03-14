@@ -252,11 +252,56 @@ const CALL_CONFIG = {
   'ไม่รับสายรอโทรใหม่': { bg: 'bg-amber-50',  text: 'text-amber-700',  border: 'border-amber-400',  icon: PhoneOff },
 };
 
+// ─── ✅ DUPLICATE CHECK HELPER (shared across components) ────────────────────
+// Returns array of duplicate bookings matching HN, name, OR phone on same date
+const findDuplicateBookings = (allBookings, { hn, name, phone, date, excludeId }) => {
+  if (!date) return [];
+  const normStr = (s) => (s || '').trim().toLowerCase();
+  const normPhone = (p) => (p || '').replace(/[-\s]/g, '').trim();
+
+  return allBookings.filter(b => {
+    if (b.id === excludeId) return false;
+    if (b.bookingDate !== date) return false;
+    if (b.status === 'ยกเลิกนัด' || b.status === 'เลื่อนนัด') return false;
+
+    // HN match
+    if (hn && hn.trim() && b.hn && b.hn.trim()) {
+      if (normStr(b.hn) === normStr(hn)) return true;
+    }
+    // Name match (must be meaningful length)
+    if (name && name.trim().length > 1 && b.customerName && b.customerName.trim().length > 1) {
+      if (normStr(b.customerName) === normStr(name)) return true;
+    }
+    // Phone match (must be 9+ digits)
+    const p1 = normPhone(phone);
+    const p2 = normPhone(b.phoneNumber);
+    if (p1.length >= 9 && p2.length >= 9 && p1 === p2) return true;
+
+    return false;
+  });
+};
+
+// Build a human-readable warning from duplicate list
+const buildDupWarning = (dups, { hn, name, phone }) => {
+  if (!dups.length) return '';
+  const normStr = (s) => (s || '').trim().toLowerCase();
+  const normPhone = (p) => (p || '').replace(/[-\s]/g, '').trim();
+
+  const lines = dups.map(b => {
+    const reasons = [];
+    if (hn && hn.trim() && normStr(b.hn) === normStr(hn)) reasons.push(`HN: ${b.hn}`);
+    if (name && name.trim().length > 1 && normStr(b.customerName) === normStr(name)) reasons.push(`ชื่อ: ${b.customerName}`);
+    const p1 = normPhone(phone); const p2 = normPhone(b.phoneNumber);
+    if (p1.length >= 9 && p1 === p2) reasons.push(`เบอร์: ${b.phoneNumber}`);
+    return `• ${b.customerName} เวลา ${b.bookingTime || '?'} น. (ตรงกัน: ${reasons.join(', ')})`;
+  });
+  return `⚠ พบนัดซ้ำในวันที่เลือก:\n${lines.join('\n')}`;
+};
+
 // ─── Get patient tier from records ───────────────────────────────────────────
 const getPatientTier = (records, hn) => {
   const recs = records.filter(r => r.hn === hn);
   if (!recs.length) return DEFAULT_TIER;
-  // Use the most recently set tier
   for (const r of recs) {
     if (r.membershipTier && MEMBERSHIP_TIERS[r.membershipTier]) return r.membershipTier;
   }
@@ -421,7 +466,6 @@ const RegisterPatientModal = ({ onClose, onRegistered }) => {
                 className="pl-10 w-full rounded-xl border border-emerald-200 focus:border-emerald-500 focus:ring focus:ring-emerald-200 px-3 py-2.5 text-sm text-slate-700" />
             </div>
           </div>
-          {/* Membership Tier */}
           <div>
             <label className="block text-xs font-bold text-slate-600 mb-1.5 flex items-center gap-1"><Crown className="w-3.5 h-3.5 text-amber-500" /> ประเภทสมาชิก</label>
             <div className="grid grid-cols-1 gap-1.5">
@@ -456,10 +500,33 @@ const RegisterPatientModal = ({ onClose, onRegistered }) => {
   );
 };
 
+// ─── ✅ DUPLICATE WARNING DISPLAY COMPONENT ──────────────────────────────────
+const DupWarnBox = ({ warn }) => {
+  if (!warn) return null;
+  const lines = warn.split('\n');
+  const header = lines[0];
+  const details = lines.slice(1);
+  return (
+    <div className="flex items-start gap-2.5 bg-amber-50 border-2 border-amber-300 rounded-2xl px-3.5 py-3">
+      <div className="shrink-0 mt-0.5 w-7 h-7 bg-amber-400 rounded-full flex items-center justify-center">
+        <AlertTriangle className="w-4 h-4 text-white" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-amber-800 font-bold text-xs leading-tight">{header}</p>
+        {details.map((line, i) => (
+          <p key={i} className="text-amber-700 text-[11px] font-medium mt-0.5 leading-snug">{line}</p>
+        ))}
+        <p className="text-amber-600 text-[10px] mt-1.5 font-semibold">กรุณาตรวจสอบก่อนยืนยันการจอง</p>
+      </div>
+    </div>
+  );
+};
+
 // ─── Booking Form Modal ───────────────────────────────────────────────────────
 const BookingFormModal = ({ booking, patients, onClose, onSave, isOffline, allBookings }) => {
   const [form, setForm] = useState(booking);
-  const [hnWarn, setHnWarn] = useState('');
+  // ✅ renamed from hnWarn → dupWarn
+  const [dupWarn, setDupWarn] = useState('');
   const [saving, setSaving] = useState(false);
   const [custMode, setCustMode] = useState(booking.hn ? 'existing' : 'new');
 
@@ -479,17 +546,10 @@ const BookingFormModal = ({ booking, patients, onClose, onSave, isOffline, allBo
       ).slice(0, 8)
     : patients.slice(0, 8);
 
-  const checkHN = useCallback((hn, date, excludeId) => {
-    if (!hn || !date) { setHnWarn(''); return; }
-    const dups = allBookings.filter(b =>
-      b.id !== excludeId &&
-      String(b.hn || '').toLowerCase() === hn.toLowerCase() &&
-      b.bookingDate === date &&
-      b.status !== 'ยกเลิกนัด' && b.status !== 'เลื่อนนัด'
-    );
-    if (dups.length) {
-      setHnWarn(`⚠ HN นี้มีนัดในวันดังกล่าวแล้ว: ${dups.map(d => `${d.customerName} ${d.bookingTime}`).join(', ')}`);
-    } else { setHnWarn(''); }
+  // ✅ NEW: checkDuplicate — checks HN, name, AND phone
+  const checkDuplicate = useCallback((hn, name, phone, date, excludeId) => {
+    const dups = findDuplicateBookings(allBookings, { hn, name, phone, date, excludeId });
+    setDupWarn(buildDupWarning(dups, { hn, name, phone }));
   }, [allBookings]);
 
   const selectPatient = (p) => {
@@ -497,14 +557,14 @@ const BookingFormModal = ({ booking, patients, onClose, onSave, isOffline, allBo
     setForm(f => ({ ...f, hn: p.hn, customerName: p.fullName, phoneNumber: p.phone || '' }));
     setHnSearch('');
     setShowDropdown(false);
-    checkHN(p.hn, form.bookingDate, booking.id);
+    checkDuplicate(p.hn, p.fullName, p.phone, form.bookingDate, booking.id);
   };
 
   const clearPatient = () => {
     setSelectedPatient(null);
     setForm(f => ({ ...f, hn: '', customerName: '', phoneNumber: '' }));
     setHnSearch('');
-    setHnWarn('');
+    setDupWarn('');
   };
 
   const switchMode = (mode) => {
@@ -517,12 +577,22 @@ const BookingFormModal = ({ booking, patients, onClose, onSave, isOffline, allBo
     const { name, value } = e.target;
     const updated = { ...form, [name]: value };
     setForm(updated);
-    if (name === 'bookingDate' && form.hn) checkHN(form.hn, value, booking.id);
+    // Re-check on date, name, or phone change
+    if (name === 'bookingDate' || name === 'customerName' || name === 'phoneNumber') {
+      checkDuplicate(
+        updated.hn,
+        updated.customerName,
+        updated.phoneNumber,
+        updated.bookingDate,
+        booking.id
+      );
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (hnWarn.startsWith('⚠')) return;
+    // ✅ Block if any duplicate found (warn starts with ⚠)
+    if (dupWarn.startsWith('⚠')) return;
     setSaving(true);
     await onSave(form);
     setSaving(false);
@@ -533,7 +603,7 @@ const BookingFormModal = ({ booking, patients, onClose, onSave, isOffline, allBo
     setSelectedPatient(newPatient);
     setForm(f => ({ ...f, hn: newPatient.hn, customerName: newPatient.fullName, phoneNumber: newPatient.phone || '' }));
     setCustMode('existing');
-    checkHN(newPatient.hn, form.bookingDate, booking.id);
+    checkDuplicate(newPatient.hn, newPatient.fullName, newPatient.phone, form.bookingDate, booking.id);
   };
 
   useEffect(() => {
@@ -679,7 +749,8 @@ const BookingFormModal = ({ booking, patients, onClose, onSave, isOffline, allBo
                 </div>
               )}
 
-              {hnWarn && <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 font-medium">{hnWarn}</p>}
+              {/* ✅ NEW: Duplicate warning display */}
+              {dupWarn && <DupWarnBox warn={dupWarn} />}
             </div>
 
             <div className="space-y-3">
@@ -713,9 +784,16 @@ const BookingFormModal = ({ booking, patients, onClose, onSave, isOffline, allBo
           </form>
           <div className="border-t border-slate-100 p-4 bg-gray-50 flex justify-end gap-3 shrink-0 rounded-b-3xl">
             <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl text-slate-600 font-bold hover:bg-slate-200 transition-colors">ยกเลิก</button>
-            <button onClick={handleSubmit} disabled={saving || hnWarn.startsWith('⚠')}
-              className={`px-6 py-2.5 rounded-xl text-white font-bold shadow-md transition-all flex items-center gap-2 ${saving ? 'bg-blue-300 cursor-not-allowed' : 'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:shadow-lg active:scale-[0.98]'}`}>
-              {saving ? <><Sparkles className="animate-spin w-4 h-4" /> กำลังบันทึก...</> : <><Save className="w-4 h-4" /> ยืนยันการจอง</>}
+            {/* ✅ Button disabled when duplicate found */}
+            <button onClick={handleSubmit} disabled={saving || dupWarn.startsWith('⚠')}
+              className={`px-6 py-2.5 rounded-xl text-white font-bold shadow-md transition-all flex items-center gap-2 ${
+                saving ? 'bg-blue-300 cursor-not-allowed' :
+                dupWarn.startsWith('⚠') ? 'bg-amber-300 cursor-not-allowed' :
+                'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:shadow-lg active:scale-[0.98]'
+              }`}>
+              {saving ? <><Sparkles className="animate-spin w-4 h-4" /> กำลังบันทึก...</> :
+               dupWarn.startsWith('⚠') ? <><AlertTriangle className="w-4 h-4" /> พบนัดซ้ำ</> :
+               <><Save className="w-4 h-4" /> ยืนยันการจอง</>}
             </button>
           </div>
         </div>
@@ -772,16 +850,28 @@ const BookingDetailModal = ({ booking, onClose, onUpdateStatus, onUpdateCallStat
     onClose();
   };
 
+  // ✅ UPDATED doNextBooking: checks HN, name, AND phone
   const doNextBooking = async () => {
     if (!nextDate || !nextTime || !nextProc) return;
-    const hn = booking.hn || '';
-    if (hn) {
-      const dups = allBookings.filter(b =>
-        b.id !== booking.id && String(b.hn || '').toLowerCase() === hn.toLowerCase() &&
-        b.bookingDate === nextDate && b.status !== 'ยกเลิกนัด' && b.status !== 'เลื่อนนัด'
-      );
-      if (dups.length) { alert(`HN "${hn}" มีนัดในวันที่ ${fmtDateTH(nextDate)} อยู่แล้ว`); return; }
+
+    const dups = findDuplicateBookings(allBookings, {
+      hn: booking.hn,
+      name: booking.customerName,
+      phone: booking.phoneNumber,
+      date: nextDate,
+      excludeId: booking.id,
+    });
+
+    if (dups.length) {
+      const warn = buildDupWarning(dups, {
+        hn: booking.hn,
+        name: booking.customerName,
+        phone: booking.phoneNumber,
+      });
+      alert(`❌ ไม่สามารถจองได้\n\n${warn}`);
+      return;
     }
+
     setUpdating(true);
     await addDoc(BOOKINGS_PATH(), {
       bookingDate: nextDate, bookingTime: nextTime,
@@ -810,7 +900,6 @@ const BookingDetailModal = ({ booking, onClose, onUpdateStatus, onUpdateCallStat
                 <Star className="w-3 h-3" /> ลูกค้าเก่า
               </span>
             )}
-            {/* Membership tier badge */}
             {booking.hn && <MemberBadge tier={patientTier} size="sm" />}
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition-colors"><X className="w-5 h-5" /></button>
@@ -1204,7 +1293,6 @@ const DashboardTab = ({ bookings, patients, isOffline, initialBooking, onPending
             </div>
           </div>
 
-          {/* ── Membership Tier Stats ── */}
           <div>
             <p className="text-[10px] uppercase font-bold text-gray-400 tracking-widest mb-2 px-1 flex items-center gap-1.5">
               <Crown className="w-3.5 h-3.5 text-amber-500" /> ประเภทสมาชิกวันนี้
@@ -1476,7 +1564,6 @@ const PatientsTab = ({ records, user, isOffline, onAddBookingForPatient }) => {
   const [editPatientHN, setEditPatientHN] = useState(null);
   const [editPatientForm, setEditPatientForm] = useState({ fullName: '', phone: '' });
   const [editPatientSaving, setEditPatientSaving] = useState(false);
-  // Membership tier selector
   const [membershipSelectorHN, setMembershipSelectorHN] = useState(null);
   const [tierFilterKey, setTierFilterKey] = useState('all');
 
@@ -1610,7 +1697,6 @@ const PatientsTab = ({ records, user, isOffline, onAddBookingForPatient }) => {
     finally { setEditPatientSaving(false); }
   };
 
-  // ── Save membership tier (update all records for that HN) ──
   const saveMembershipTier = async (hn, newTier) => {
     const toUpdate = records.filter(r => r.hn === hn);
     await Promise.all(toUpdate.map(r =>
@@ -1659,7 +1745,6 @@ const PatientsTab = ({ records, user, isOffline, onAddBookingForPatient }) => {
     setBeforeFiles([]); setBeforePreviews([]); setAfterFiles([]); setAfterPreviews([]);
   };
 
-  // Tier counts for filter tabs
   const tierCounts = { all: allPatients.length };
   TIER_KEYS.forEach(k => { tierCounts[k] = allPatients.filter(p => p.membershipTier === k).length; });
 
@@ -1701,7 +1786,6 @@ const PatientsTab = ({ records, user, isOffline, onAddBookingForPatient }) => {
                 </div>
               </div>
             ))}
-            {/* Membership Tier in add form */}
             <div>
               <label className="block text-sm font-semibold text-purple-900 mb-1.5 flex items-center gap-1.5"><Crown className="w-4 h-4 text-amber-500" /> ประเภทสมาชิก</label>
               <div className="grid grid-cols-1 gap-1.5">
@@ -1764,7 +1848,6 @@ const PatientsTab = ({ records, user, isOffline, onAddBookingForPatient }) => {
             </div>
           </div>
 
-          {/* ── Tier Filter Tabs ── */}
           <div className="flex gap-1.5 overflow-x-auto pb-2 mb-4" style={{ scrollbarWidth: 'none' }}>
             <button
               onClick={() => setTierFilterKey('all')}
@@ -1832,7 +1915,6 @@ const PatientsTab = ({ records, user, isOffline, onAddBookingForPatient }) => {
                             {totalImages > 0 && <><span className="text-slate-200">·</span><ImageIcon className="w-2.5 h-2.5 text-purple-300" /><span className="text-[11px] text-slate-400">{totalImages}</span></>}
                           </div>
                         </div>
-                        {/* Tier change button */}
                         <button
                           onClick={e => { e.stopPropagation(); setMembershipSelectorHN(patient.hn); }}
                           className="p-2 text-slate-300 hover:text-amber-500 hover:bg-amber-50 rounded-xl transition-colors shrink-0"

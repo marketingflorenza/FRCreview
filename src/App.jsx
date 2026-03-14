@@ -816,6 +816,28 @@ const BookingDetailModal = ({ booking, onClose, onUpdateStatus, onUpdateCallStat
   const [nextProc, setNextProc] = useState(booking.procedure);
   const [updating, setUpdating] = useState(false);
   const [localCallStatus, setLocalCallStatus] = useState(booking.callStatus || 'ยังไม่โทรคอนเฟิม');
+  // ── Delete with password ──
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteError, setDeleteError] = useState('');
+  const [deleting, setDeleting] = useState(false);
+
+  const doDelete = async () => {
+    if (deletePassword !== 'P@ssw0rd88') {
+      setDeleteError('รหัสผ่านไม่ถูกต้อง กรุณาติดต่อผู้ดูแลระบบ');
+      setDeletePassword('');
+      return;
+    }
+    setDeleting(true);
+    try {
+      await deleteDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'bookings', booking.id));
+      onClose();
+    } catch (e) {
+      setDeleteError('เกิดข้อผิดพลาด: ' + e.message);
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const sc = STATUS_CONFIG[booking.status] || STATUS_CONFIG['ยังไม่มา'];
   const newCust = isNewCustomer(booking, patients);
@@ -1013,7 +1035,73 @@ const BookingDetailModal = ({ booking, onClose, onUpdateStatus, onUpdateCallStat
               className="flex-1 flex items-center justify-center gap-2 py-2 text-sm text-slate-500 hover:text-blue-500 bg-white hover:bg-blue-50 border border-slate-200 hover:border-blue-200 rounded-xl transition-all font-medium">
               <FileEdit className="w-3.5 h-3.5" /> แก้ไขข้อมูล
             </button>
+            <button onClick={() => { setShowDeleteModal(true); setDeletePassword(''); setDeleteError(''); }}
+              className="p-2 flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 border border-slate-200 hover:border-red-300 rounded-xl transition-all"
+              title="ลบรายการนัด">
+              <Trash2 className="w-4 h-4" />
+            </button>
           </div>
+
+          {/* ── Delete Password Modal ── */}
+          {showDeleteModal && (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[80] flex items-center justify-center p-4">
+              <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden">
+                <div className="bg-gradient-to-r from-red-700 to-red-500 px-5 py-4 flex items-center justify-between text-white">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 bg-white/20 rounded-xl"><Trash2 className="w-5 h-5" /></div>
+                    <div>
+                      <h3 className="font-bold text-base leading-tight">ลบรายการนัดหมาย</h3>
+                      <p className="text-red-200 text-[10px]">เฉพาะผู้ดูแลระบบเท่านั้น</p>
+                    </div>
+                  </div>
+                  <button onClick={() => setShowDeleteModal(false)} className="p-1.5 hover:bg-white/20 rounded-full transition-colors"><X className="w-5 h-5" /></button>
+                </div>
+                <div className="p-5 space-y-4">
+                  {/* Warning box */}
+                  <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-2xl p-3.5">
+                    <AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-bold text-red-800">ต้องการลบรายการนี้?</p>
+                      <p className="text-xs text-red-600 mt-0.5 font-medium">{booking.customerName} · {fmtDateTH(booking.bookingDate)} {fmtTimeTH(booking.bookingTime)}</p>
+                      <p className="text-[11px] text-red-500 mt-1.5 leading-snug">
+                        การลบข้อมูลไม่สามารถกู้คืนได้<br/>
+                        <span className="font-bold">กรุณาติดต่อผู้ดูแลระบบเพื่อขอรหัสผ่านในการลบข้อมูล</span>
+                      </p>
+                    </div>
+                  </div>
+                  {/* Password input */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 mb-1.5 flex items-center gap-1.5">
+                      <Shield className="w-3.5 h-3.5 text-red-400" /> รหัสผ่านผู้ดูแลระบบ
+                    </label>
+                    <input
+                      type="password"
+                      value={deletePassword}
+                      onChange={e => { setDeletePassword(e.target.value); setDeleteError(''); }}
+                      onKeyDown={e => e.key === 'Enter' && doDelete()}
+                      placeholder="กรอกรหัสผ่าน"
+                      autoFocus
+                      className={`w-full rounded-xl border px-4 py-2.5 text-sm text-slate-700 outline-none transition-all
+                        ${deleteError ? 'border-red-400 focus:ring-2 focus:ring-red-200 bg-red-50' : 'border-slate-200 focus:border-red-400 focus:ring-2 focus:ring-red-100'}`}
+                    />
+                    {deleteError && (
+                      <p className="mt-1.5 text-xs text-red-600 font-semibold flex items-center gap-1">
+                        <XCircle className="w-3.5 h-3.5 shrink-0" /> {deleteError}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="px-5 pb-5 flex gap-3">
+                  <button onClick={() => setShowDeleteModal(false)} className="flex-1 py-2.5 rounded-xl text-slate-600 font-bold bg-slate-100 hover:bg-slate-200 transition-colors text-sm">ยกเลิก</button>
+                  <button onClick={doDelete} disabled={deleting || !deletePassword}
+                    className={`flex-1 py-2.5 rounded-xl text-white font-bold transition-all text-sm flex items-center justify-center gap-2 shadow-md
+                      ${deleting || !deletePassword ? 'bg-red-300 cursor-not-allowed' : 'bg-gradient-to-r from-red-700 to-red-500 hover:from-red-800 active:scale-[0.98]'}`}>
+                    {deleting ? <><Sparkles className="animate-spin w-4 h-4" /> กำลังลบ...</> : <><Trash2 className="w-4 h-4" /> ยืนยันลบ</>}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           {showNextBooking && (
             <div className="p-4 bg-teal-50 border border-teal-200 rounded-2xl space-y-3">
               <h5 className="text-sm font-bold text-teal-800 flex items-center gap-2"><CalendarPlus className="w-4 h-4" /> จองครั้งถัดไป</h5>
@@ -1432,6 +1520,15 @@ const SummaryTab = ({ bookings }) => {
     const filtered = bookings.filter(b => b.bookingDate >= start && b.bookingDate <= end);
     const totals = { all: filtered.length, arrived: 0, upcoming: 0, rescheduled: 0, noShow: 0, cancelled: 0 };
     const byBooker = {};
+
+    // ✅ Normalize key: strip ALL invisible unicode + Thai-invisible chars, trim, collapse spaces
+    // Use lowercase key so "สเนล" and "สเนล " and "สเนล\u200B" all map to the same bucket
+    const normalizeKey = (name) => (name || '')
+      .replace(/[\u200B\u200C\u200D\uFEFF\u00A0\u2000-\u200A\u202F\u205F\u3000\t\r\n]/g, ' ')
+      .trim()
+      .replace(/\s+/g, ' ')
+      .toLowerCase();
+
     filtered.forEach(b => {
       const s = b.status || 'ยังไม่มา';
       if (s === 'มาแล้ว') totals.arrived++;
@@ -1439,14 +1536,19 @@ const SummaryTab = ({ bookings }) => {
       else if (s === 'เลื่อนนัด') totals.rescheduled++;
       else if (s === 'ไม่มาตามนัด') totals.noShow++;
       else if (s === 'ยกเลิกนัด') totals.cancelled++;
-      const booker = b.bookerName || 'ไม่ระบุ';
-      if (!byBooker[booker]) byBooker[booker] = { total: 0, arrived: 0, upcoming: 0, rescheduled: 0, noShow: 0, cancelled: 0 };
-      byBooker[booker].total++;
-      if (s === 'มาแล้ว') byBooker[booker].arrived++;
-      else if (s === 'ยังไม่มา') byBooker[booker].upcoming++;
-      else if (s === 'เลื่อนนัด') byBooker[booker].rescheduled++;
-      else if (s === 'ไม่มาตามนัด') byBooker[booker].noShow++;
-      else if (s === 'ยกเลิกนัด') byBooker[booker].cancelled++;
+
+      const key = normalizeKey(b.bookerName) || 'ไม่ระบุ';
+      // Store displayName from first occurrence (cleaned, but preserves original Thai case)
+      if (!byBooker[key]) byBooker[key] = {
+        displayName: (b.bookerName || '').replace(/[\u200B\u200C\u200D\uFEFF\u00A0]/g, '').trim().replace(/\s+/g, ' ') || 'ไม่ระบุ',
+        total: 0, arrived: 0, upcoming: 0, rescheduled: 0, noShow: 0, cancelled: 0
+      };
+      byBooker[key].total++;
+      if (s === 'มาแล้ว') byBooker[key].arrived++;
+      else if (s === 'ยังไม่มา') byBooker[key].upcoming++;
+      else if (s === 'เลื่อนนัด') byBooker[key].rescheduled++;
+      else if (s === 'ไม่มาตามนัด') byBooker[key].noShow++;
+      else if (s === 'ยกเลิกนัด') byBooker[key].cancelled++;
     });
     setResult({ totals, byBooker });
   };
@@ -1505,13 +1607,13 @@ const SummaryTab = ({ bookings }) => {
                   </tr>
                 </thead>
                 <tbody>
-                  {Object.entries(result.byBooker).sort().map(([name, s]) => {
+                  {Object.entries(result.byBooker).sort(([,a],[,b]) => a.displayName.localeCompare(b.displayName, 'th')).map(([key, s]) => {
                     const pct = s.total > 0 ? ((s.arrived / s.total) * 100).toFixed(1) : '0.0';
                     const pctNum = parseFloat(pct);
                     const pctColor = pctNum >= 70 ? 'bg-emerald-100 text-emerald-700' : pctNum >= 50 ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700';
                     return (
-                      <tr key={name} className="border-b border-slate-100 hover:bg-slate-50">
-                        <td className="px-3 py-3 font-bold text-gray-800 text-sm whitespace-nowrap">{name}</td>
+                      <tr key={key} className="border-b border-slate-100 hover:bg-slate-50">
+                        <td className="px-3 py-3 font-bold text-gray-800 text-sm whitespace-nowrap">{s.displayName}</td>
                         <td className="px-3 py-3 text-center font-bold text-blue-600 text-sm">{s.total}</td>
                         <td className="px-3 py-3 text-center text-emerald-600 text-sm">{s.arrived}</td>
                         <td className="px-3 py-3 text-center text-amber-600 text-sm">{s.upcoming}</td>

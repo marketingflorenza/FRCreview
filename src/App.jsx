@@ -7,7 +7,8 @@ import {
   CalendarCheck, PhoneCall, PhoneMissed, PhoneIncoming, PhoneOff,
   CheckCircle, UserX, XCircle, BarChart3, CalendarDays, Activity,
   Save, Ban, AlertTriangle, CalendarPlus, RefreshCw, UsersRound,
-  ChevronDown, Bell, BookOpen, Grid, List, Star, UserPlus
+  ChevronDown, Bell, BookOpen, Grid, List, Star, UserPlus, Crown,
+  Award, Shield, Gem, BadgeCheck
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
@@ -34,6 +35,167 @@ try {
   db = getFirestore(app);
 } catch (e) { console.error("Firebase init error:", e); }
 
+// ─── Membership Tiers ─────────────────────────────────────────────────────────
+const MEMBERSHIP_TIERS = {
+  'ลูกค้าปกติ': {
+    label: 'ลูกค้าปกติ',
+    Icon: User,
+    gradient: 'from-slate-100 to-slate-200',
+    badgeBg: 'bg-slate-100',
+    badgeText: 'text-slate-600',
+    badgeBorder: 'border-slate-300',
+    iconBg: 'bg-slate-200',
+    iconColor: 'text-slate-500',
+    headerGradient: 'from-slate-600 to-slate-500',
+    ring: 'ring-slate-300',
+    dot: 'bg-slate-400',
+    order: 0,
+  },
+  'Premier card': {
+    label: 'Premier Card',
+    Icon: BadgeCheck,
+    gradient: 'from-blue-100 to-sky-200',
+    badgeBg: 'bg-blue-100',
+    badgeText: 'text-blue-700',
+    badgeBorder: 'border-blue-300',
+    iconBg: 'bg-blue-500',
+    iconColor: 'text-white',
+    headerGradient: 'from-blue-600 to-sky-500',
+    ring: 'ring-blue-300',
+    dot: 'bg-blue-500',
+    order: 1,
+  },
+  'Flora card': {
+    label: 'Flora Card',
+    Icon: Gem,
+    gradient: 'from-emerald-100 to-teal-200',
+    badgeBg: 'bg-emerald-100',
+    badgeText: 'text-emerald-700',
+    badgeBorder: 'border-emerald-300',
+    iconBg: 'bg-emerald-500',
+    iconColor: 'text-white',
+    headerGradient: 'from-emerald-600 to-teal-500',
+    ring: 'ring-emerald-300',
+    dot: 'bg-emerald-500',
+    order: 2,
+  },
+  'Vip': {
+    label: 'VIP',
+    Icon: Award,
+    gradient: 'from-violet-100 to-purple-200',
+    badgeBg: 'bg-violet-100',
+    badgeText: 'text-violet-700',
+    badgeBorder: 'border-violet-300',
+    iconBg: 'bg-violet-600',
+    iconColor: 'text-white',
+    headerGradient: 'from-violet-700 to-purple-500',
+    ring: 'ring-violet-300',
+    dot: 'bg-violet-500',
+    order: 3,
+  },
+  'VVip': {
+    label: 'VVIP',
+    Icon: Crown,
+    gradient: 'from-amber-100 to-yellow-200',
+    badgeBg: 'bg-amber-100',
+    badgeText: 'text-amber-700',
+    badgeBorder: 'border-amber-400',
+    iconBg: 'bg-gradient-to-br from-amber-400 to-yellow-500',
+    iconColor: 'text-white',
+    headerGradient: 'from-amber-500 to-yellow-400',
+    ring: 'ring-amber-300',
+    dot: 'bg-amber-500',
+    order: 4,
+  },
+};
+
+const TIER_KEYS = Object.keys(MEMBERSHIP_TIERS);
+const DEFAULT_TIER = 'ลูกค้าปกติ';
+
+// ─── Membership Badge Component ────────────────────────────────────────────────
+const MemberBadge = ({ tier, size = 'sm' }) => {
+  const cfg = MEMBERSHIP_TIERS[tier] || MEMBERSHIP_TIERS[DEFAULT_TIER];
+  const IconC = cfg.Icon;
+  const sizes = {
+    xs: 'px-1.5 py-0.5 text-[9px] gap-0.5',
+    sm: 'px-2 py-0.5 text-[10px] gap-1',
+    md: 'px-3 py-1 text-xs gap-1.5',
+    lg: 'px-4 py-1.5 text-sm gap-2',
+  };
+  const iconSizes = { xs: 'w-2.5 h-2.5', sm: 'w-3 h-3', md: 'w-3.5 h-3.5', lg: 'w-4 h-4' };
+  return (
+    <span className={`inline-flex items-center font-bold rounded-full border ${cfg.badgeBg} ${cfg.badgeText} ${cfg.badgeBorder} ${sizes[size]}`}>
+      <IconC className={`${iconSizes[size]} shrink-0`} />
+      {cfg.label}
+    </span>
+  );
+};
+
+// ─── Membership Selector Modal ────────────────────────────────────────────────
+const MembershipSelectorModal = ({ currentTier, patientName, onClose, onSave }) => {
+  const [selected, setSelected] = useState(currentTier || DEFAULT_TIER);
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    await onSave(selected);
+    setSaving(false);
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+      <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden">
+        <div className="bg-gradient-to-r from-purple-800 to-purple-600 px-5 py-4 flex items-center justify-between text-white">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 bg-white/20 rounded-xl"><Crown className="w-5 h-5" /></div>
+            <div>
+              <h3 className="font-bold text-base leading-tight">ประเภทสมาชิก</h3>
+              <p className="text-purple-200 text-[10px]">{patientName}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-1.5 hover:bg-white/20 rounded-full transition-colors"><X className="w-5 h-5" /></button>
+        </div>
+        <div className="p-4 space-y-2">
+          {TIER_KEYS.map(key => {
+            const cfg = MEMBERSHIP_TIERS[key];
+            const IconC = cfg.Icon;
+            const isSelected = selected === key;
+            return (
+              <button
+                key={key}
+                onClick={() => setSelected(key)}
+                className={`w-full flex items-center gap-3 p-3 rounded-2xl border-2 transition-all text-left
+                  ${isSelected ? `border-transparent bg-gradient-to-r ${cfg.gradient} shadow-md` : 'border-slate-100 hover:border-slate-200 bg-white'}`}
+              >
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm
+                  ${isSelected ? cfg.iconBg : 'bg-slate-100'}`}>
+                  <IconC className={`w-5 h-5 ${isSelected ? cfg.iconColor : 'text-slate-400'}`} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className={`font-bold text-sm ${isSelected ? 'text-slate-800' : 'text-slate-600'}`}>{cfg.label}</p>
+                </div>
+                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all
+                  ${isSelected ? 'border-purple-600 bg-purple-600' : 'border-slate-300'}`}>
+                  {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+        <div className="px-4 pb-4 flex gap-3">
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-slate-600 font-bold bg-slate-100 hover:bg-slate-200 transition-colors text-sm">ยกเลิก</button>
+          <button onClick={handleSave} disabled={saving}
+            className={`flex-1 py-2.5 rounded-xl text-white font-bold transition-all text-sm flex items-center justify-center gap-2 shadow-md
+              ${saving ? 'bg-purple-300 cursor-not-allowed' : 'bg-gradient-to-r from-purple-700 to-purple-500 hover:from-purple-800 active:scale-[0.98]'}`}>
+            {saving ? <><Sparkles className="animate-spin w-4 h-4" /> กำลังบันทึก...</> : <><Save className="w-4 h-4" /> บันทึก</>}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const RECORDS_PATH = () => collection(db, 'artifacts', APP_ID, 'public', 'data', 'patient_records');
 const BOOKINGS_PATH = () => collection(db, 'artifacts', APP_ID, 'public', 'data', 'bookings');
@@ -59,14 +221,12 @@ const EMPTY_BOOKING = (date = '') => ({
 const fmt = (d) => d ? new Date(d).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' }) : '';
 const fmtMoney = (n) => new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(n || 0);
 
-// Format YYYY-MM-DD → วัน/เดือน/คศ (พ.ศ. ไทย) เช่น 12/03/2569
 const fmtDateTH = (d) => {
   if (!d) return '-';
   const [y, m, day] = d.split('-');
   const be = parseInt(y) + 543;
   return `${day}/${m}/${be}`;
 };
-// Format time with น. เช่น 10:00 น.
 const fmtTimeTH = (t) => t ? `${t} น.` : '-';
 const getRecordImages = (r) => {
   const b = r.imagesBefore || []; const a = r.imagesAfter || [];
@@ -92,7 +252,17 @@ const CALL_CONFIG = {
   'ไม่รับสายรอโทรใหม่': { bg: 'bg-amber-50',  text: 'text-amber-700',  border: 'border-amber-400',  icon: PhoneOff },
 };
 
-// ─── Helper: Check if booking is new customer (no HN or HN not in patient records) ──
+// ─── Get patient tier from records ───────────────────────────────────────────
+const getPatientTier = (records, hn) => {
+  const recs = records.filter(r => r.hn === hn);
+  if (!recs.length) return DEFAULT_TIER;
+  // Use the most recently set tier
+  for (const r of recs) {
+    if (r.membershipTier && MEMBERSHIP_TIERS[r.membershipTier]) return r.membershipTier;
+  }
+  return DEFAULT_TIER;
+};
+
 const isNewCustomer = (booking, patients) => {
   if (!booking.hn || booking.hn.trim() === '') return true;
   return !patients.some(p => String(p.hn).toLowerCase() === String(booking.hn).toLowerCase());
@@ -170,7 +340,6 @@ const StaffFields = ({ formData, handleInputChange, theme = 'purple' }) => {
   );
 };
 
-// ─── Stat Card ────────────────────────────────────────────────────────────────
 const StatCard = ({ label, value, Icon, bg, text, onClick }) => (
   <div onClick={onClick} className={`cursor-pointer hover:-translate-y-1 bg-white p-3 sm:p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center text-center hover:shadow-md transition-all`}>
     <div className={`p-2 sm:p-3 ${bg} ${text} rounded-xl sm:rounded-2xl mb-2`}><Icon className="w-4 h-4 sm:w-5 sm:h-5" /></div>
@@ -179,28 +348,9 @@ const StatCard = ({ label, value, Icon, bg, text, onClick }) => (
   </div>
 );
 
-// ─── NEW: Customer Type Card (larger, more prominent) ─────────────────────────
-const CustomerTypeCard = ({ label, value, Icon, gradient, iconBg, iconText, badge, onClick }) => (
-  <div onClick={onClick}
-    className={`cursor-pointer hover:-translate-y-1 bg-gradient-to-br ${gradient} p-4 sm:p-5 rounded-2xl shadow-sm border border-white/60 flex items-center gap-4 hover:shadow-lg transition-all`}>
-    <div className={`p-3 ${iconBg} ${iconText} rounded-2xl shadow-sm shrink-0`}>
-      <Icon className="w-6 h-6" />
-    </div>
-    <div className="flex-1 min-w-0">
-      <p className="text-[10px] sm:text-xs uppercase font-bold text-slate-500 tracking-wider leading-tight">{label}</p>
-      <h3 className="text-3xl sm:text-4xl font-bold text-slate-800 leading-none mt-0.5">{value}</h3>
-    </div>
-    {badge && (
-      <span className={`shrink-0 text-[10px] font-bold px-2 py-1 rounded-full ${badge}`}>
-        {Math.round((value / (value || 1)) * 100)}%
-      </span>
-    )}
-  </div>
-);
-
 // ─── Register New Patient Mini-Modal ─────────────────────────────────────────
 const RegisterPatientModal = ({ onClose, onRegistered }) => {
-  const [regForm, setRegForm] = useState({ fullName: '', hn: '', phone: '' });
+  const [regForm, setRegForm] = useState({ fullName: '', hn: '', phone: '', membershipTier: DEFAULT_TIER });
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
 
@@ -213,6 +363,7 @@ const RegisterPatientModal = ({ onClose, onRegistered }) => {
         fullName: regForm.fullName.trim(),
         hn: regForm.hn.trim(),
         phone: regForm.phone.trim(),
+        membershipTier: regForm.membershipTier,
         serviceDate: todayStr(),
         service: 'ลงทะเบียนผู้ป่วยใหม่',
         price: null,
@@ -221,7 +372,7 @@ const RegisterPatientModal = ({ onClose, onRegistered }) => {
         imagesBefore: [], imagesAfter: [], images: [],
         createdAt: serverTimestamp(),
       });
-      onRegistered({ hn: regForm.hn.trim(), fullName: regForm.fullName.trim(), phone: regForm.phone.trim() });
+      onRegistered({ hn: regForm.hn.trim(), fullName: regForm.fullName.trim(), phone: regForm.phone.trim(), membershipTier: regForm.membershipTier });
     } catch (e) { setErr('เกิดข้อผิดพลาด: ' + e.message); }
     finally { setSaving(false); }
   };
@@ -270,10 +421,27 @@ const RegisterPatientModal = ({ onClose, onRegistered }) => {
                 className="pl-10 w-full rounded-xl border border-emerald-200 focus:border-emerald-500 focus:ring focus:ring-emerald-200 px-3 py-2.5 text-sm text-slate-700" />
             </div>
           </div>
-          {err && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 font-medium">{err}</p>}
-          <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-100">
-            <p className="text-[11px] text-emerald-700 font-medium">✅ ข้อมูลจะถูกบันทึกในแท็บ "ประวัติลูกค้า" และสามารถค้นหา HN ได้ทันที</p>
+          {/* Membership Tier */}
+          <div>
+            <label className="block text-xs font-bold text-slate-600 mb-1.5 flex items-center gap-1"><Crown className="w-3.5 h-3.5 text-amber-500" /> ประเภทสมาชิก</label>
+            <div className="grid grid-cols-1 gap-1.5">
+              {TIER_KEYS.map(key => {
+                const cfg = MEMBERSHIP_TIERS[key];
+                const IconC = cfg.Icon;
+                const isSelected = regForm.membershipTier === key;
+                return (
+                  <button key={key} type="button" onClick={() => setRegForm(f => ({ ...f, membershipTier: key }))}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-xl border-2 text-left transition-all text-sm font-bold
+                      ${isSelected ? `bg-gradient-to-r ${cfg.gradient} ${cfg.badgeBorder} text-slate-800` : 'border-slate-100 text-slate-500 hover:border-slate-200'}`}>
+                    <IconC className={`w-4 h-4 shrink-0 ${isSelected ? cfg.badgeText : 'text-slate-300'}`} />
+                    {cfg.label}
+                    {isSelected && <span className="ml-auto text-[10px] font-bold text-emerald-600">✓ เลือกแล้ว</span>}
+                  </button>
+                );
+              })}
+            </div>
           </div>
+          {err && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 font-medium">{err}</p>}
         </div>
         <div className="px-5 pb-5 flex gap-3">
           <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-slate-600 font-bold bg-slate-100 hover:bg-slate-200 transition-colors text-sm">ยกเลิก</button>
@@ -293,10 +461,8 @@ const BookingFormModal = ({ booking, patients, onClose, onSave, isOffline, allBo
   const [form, setForm] = useState(booking);
   const [hnWarn, setHnWarn] = useState('');
   const [saving, setSaving] = useState(false);
-  // 'existing' | 'new'
   const [custMode, setCustMode] = useState(booking.hn ? 'existing' : 'new');
 
-  // HN search state (existing customers)
   const [hnSearch, setHnSearch] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState(
@@ -389,12 +555,8 @@ const BookingFormModal = ({ booking, patients, onClose, onSave, isOffline, allBo
             <button onClick={onClose} className="p-1.5 hover:bg-white/20 rounded-full transition-colors"><X className="w-5 h-5" /></button>
           </div>
           <form onSubmit={handleSubmit} className="overflow-y-auto flex-grow p-5 space-y-4">
-
-            {/* ── Customer Section ── */}
             <div className="bg-blue-50 rounded-2xl p-4 border border-blue-100 space-y-3">
               <p className="text-xs font-bold text-blue-500 uppercase tracking-wider">ข้อมูลลูกค้า</p>
-
-              {/* Mode tabs */}
               <div className="flex gap-1.5 bg-white/70 p-1 rounded-xl border border-blue-100">
                 <button type="button" onClick={() => switchMode('existing')}
                   className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5
@@ -408,7 +570,6 @@ const BookingFormModal = ({ booking, patients, onClose, onSave, isOffline, allBo
                 </button>
               </div>
 
-              {/* ── EXISTING: HN Search ── */}
               {custMode === 'existing' && (
                 <div className="space-y-2">
                   {selectedPatient ? (
@@ -417,7 +578,10 @@ const BookingFormModal = ({ booking, patients, onClose, onSave, isOffline, allBo
                         <User className="w-4 h-4 text-blue-600" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-bold text-slate-800 text-sm truncate">{selectedPatient.fullName}</p>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="font-bold text-slate-800 text-sm truncate">{selectedPatient.fullName}</p>
+                          {selectedPatient.membershipTier && <MemberBadge tier={selectedPatient.membershipTier} size="xs" />}
+                        </div>
                         <div className="flex items-center gap-2 mt-0.5">
                           <span className="flex items-center text-[11px] text-blue-600 font-bold"><Hash className="w-2.5 h-2.5 mr-0.5" />{selectedPatient.hn}</span>
                           {selectedPatient.phone && <span className="flex items-center text-[11px] text-slate-400"><Phone className="w-2.5 h-2.5 mr-0.5" />{selectedPatient.phone}</span>}
@@ -454,7 +618,10 @@ const BookingFormModal = ({ booking, patients, onClose, onSave, isOffline, allBo
                                 <User className="w-3.5 h-3.5 text-purple-500" />
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className="font-bold text-slate-800 text-sm truncate">{p.fullName}</p>
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <p className="font-bold text-slate-800 text-sm truncate">{p.fullName}</p>
+                                  {p.membershipTier && p.membershipTier !== DEFAULT_TIER && <MemberBadge tier={p.membershipTier} size="xs" />}
+                                </div>
                                 <div className="flex items-center gap-2">
                                   <span className="text-[11px] text-blue-500 font-bold flex items-center"><Hash className="w-2.5 h-2.5 mr-0.5" />{p.hn}</span>
                                   {p.phone && <span className="text-[11px] text-slate-400 flex items-center"><Phone className="w-2.5 h-2.5 mr-0.5" />{p.phone}</span>}
@@ -468,7 +635,6 @@ const BookingFormModal = ({ booking, patients, onClose, onSave, isOffline, allBo
                     </div>
                   )}
 
-                  {/* Phone + name override when patient selected */}
                   {selectedPatient && (
                     <div className="grid grid-cols-2 gap-2">
                       <div>
@@ -484,7 +650,6 @@ const BookingFormModal = ({ booking, patients, onClose, onSave, isOffline, allBo
                     </div>
                   )}
 
-                  {/* Register button — separate, below search */}
                   <div className="border-t border-blue-100 pt-2">
                     <p className="text-[10px] text-slate-400 font-medium mb-1.5">มาครั้งแรก ยังไม่มีข้อมูลในระบบ?</p>
                     <button type="button" onClick={() => setShowRegister(true)}
@@ -495,7 +660,6 @@ const BookingFormModal = ({ booking, patients, onClose, onSave, isOffline, allBo
                 </div>
               )}
 
-              {/* ── NEW CUSTOMER: simple manual entry, NO HN required, NOT saved to records ── */}
               {custMode === 'new' && (
                 <div className="space-y-2.5">
                   <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 flex items-center gap-2">
@@ -518,7 +682,6 @@ const BookingFormModal = ({ booking, patients, onClose, onSave, isOffline, allBo
               {hnWarn && <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 font-medium">{hnWarn}</p>}
             </div>
 
-            {/* ── Appointment Details ── */}
             <div className="space-y-3">
               <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b pb-1">รายละเอียดนัดหมาย</h3>
               <div className="grid grid-cols-2 gap-3">
@@ -562,7 +725,7 @@ const BookingFormModal = ({ booking, patients, onClose, onSave, isOffline, allBo
 };
 
 // ─── Booking Detail Modal ─────────────────────────────────────────────────────
-const BookingDetailModal = ({ booking, onClose, onUpdateStatus, onUpdateCallStatus, onEdit, patients, allBookings }) => {
+const BookingDetailModal = ({ booking, onClose, onUpdateStatus, onUpdateCallStatus, onEdit, patients, allBookings, records }) => {
   const [showCancelForm, setShowCancelForm] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [cancelNote, setCancelNote] = useState('');
@@ -574,11 +737,12 @@ const BookingDetailModal = ({ booking, onClose, onUpdateStatus, onUpdateCallStat
   const [nextTime, setNextTime] = useState(booking.bookingTime);
   const [nextProc, setNextProc] = useState(booking.procedure);
   const [updating, setUpdating] = useState(false);
-  // Local state for optimistic call status update
   const [localCallStatus, setLocalCallStatus] = useState(booking.callStatus || 'ยังไม่โทรคอนเฟิม');
 
   const sc = STATUS_CONFIG[booking.status] || STATUS_CONFIG['ยังไม่มา'];
   const newCust = isNewCustomer(booking, patients);
+  const patientTier = booking.hn ? getPatientTier(records, booking.hn) : DEFAULT_TIER;
+  const tierCfg = MEMBERSHIP_TIERS[patientTier] || MEMBERSHIP_TIERS[DEFAULT_TIER];
 
   const doStatus = async (status) => { setUpdating(true); await onUpdateStatus(booking.id, { status }); setUpdating(false); onClose(); };
 
@@ -637,7 +801,6 @@ const BookingDetailModal = ({ booking, onClose, onUpdateStatus, onUpdateCallStat
         <div className="px-6 py-4 flex items-start justify-between shrink-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest ${sc.bg} ${sc.text}`}>{booking.status}</span>
-            {/* NEW: Customer type badge */}
             {newCust ? (
               <span className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold bg-amber-100 text-amber-700 border border-amber-300">
                 <UserPlus className="w-3 h-3" /> ลูกค้าใหม่
@@ -647,6 +810,8 @@ const BookingDetailModal = ({ booking, onClose, onUpdateStatus, onUpdateCallStat
                 <Star className="w-3 h-3" /> ลูกค้าเก่า
               </span>
             )}
+            {/* Membership tier badge */}
+            {booking.hn && <MemberBadge tier={patientTier} size="sm" />}
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition-colors"><X className="w-5 h-5" /></button>
         </div>
@@ -788,7 +953,7 @@ const BookingDetailModal = ({ booking, onClose, onUpdateStatus, onUpdateCallStat
 };
 
 // ─── Booking List Modal ───────────────────────────────────────────────────────
-const BookingListModal = ({ title, bookings, onClose, onSelectBooking, patients }) => (
+const BookingListModal = ({ title, bookings, onClose, onSelectBooking, patients, records }) => (
   <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4">
     <div className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[85vh]">
       <div className="px-5 py-4 flex items-center justify-between border-b border-slate-100 shrink-0">
@@ -801,18 +966,20 @@ const BookingListModal = ({ title, bookings, onClose, onSelectBooking, patients 
         ) : bookings.map(b => {
           const sc = STATUS_CONFIG[b.status] || STATUS_CONFIG['ยังไม่มา'];
           const newCust = patients ? isNewCustomer(b, patients) : false;
+          const tier = b.hn && records ? getPatientTier(records, b.hn) : DEFAULT_TIER;
           return (
             <div key={b.id} onClick={() => { onClose(); onSelectBooking(b); }}
               className="bg-white p-3 rounded-2xl border-2 border-slate-100 hover:border-blue-300 hover:shadow-md transition-all cursor-pointer">
               <div className="flex justify-between items-start gap-2">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5 mb-0.5">
+                  <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
                     <p className="font-bold text-slate-800 text-sm truncate">{b.customerName || 'ไม่มีชื่อ'}</p>
                     {newCust && (
                       <span className="shrink-0 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-700">
                         <UserPlus className="w-2.5 h-2.5" />ใหม่
                       </span>
                     )}
+                    {b.hn && <MemberBadge tier={tier} size="xs" />}
                   </div>
                   {b.hn && <p className="text-[11px] text-blue-500 font-bold">HN: {b.hn}</p>}
                   <p className="text-xs text-slate-400 truncate mt-0.5">{b.procedure || '-'}</p>
@@ -858,63 +1025,34 @@ const CalendarView = ({ bookings, patients, onSelectDate, onAddBooking }) => {
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-      {/* Calendar header */}
       <div className="px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 flex items-center justify-between text-white">
         <div className="flex items-center gap-2">
           <button onClick={prevMonth} className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"><ChevronLeft className="w-4 h-4" /></button>
           <span className="text-sm font-bold min-w-[130px] text-center">{MONTH_TH[calMonth]} {calYear + 543}</span>
           <button onClick={nextMonth} className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"><ChevronRight className="w-4 h-4" /></button>
         </div>
-        <div className="flex items-center gap-3">
-          {/* Legend */}
-          <div className="hidden sm:flex items-center gap-3 text-[10px] font-bold">
-            <div className="flex items-center gap-1">
-              <div className="w-2 h-2 rounded-full bg-purple-400" />
-              <span className="text-white/80">ลูกค้าเก่า</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-2 h-2 rounded-full bg-amber-400" />
-              <span className="text-white/80">ลูกค้าใหม่</span>
-            </div>
-          </div>
-          <button onClick={goToday} className="text-xs font-bold bg-white/20 hover:bg-white/30 px-3 py-1 rounded-lg transition-colors">วันนี้</button>
-        </div>
+        <button onClick={goToday} className="text-xs font-bold bg-white/20 hover:bg-white/30 px-3 py-1 rounded-lg transition-colors">วันนี้</button>
       </div>
-
-      {/* Day headers */}
       <div className="grid grid-cols-7 bg-slate-50 border-b border-slate-100">
         {DAY_TH_SHORT.map((d, i) => (
           <div key={i} className={`text-center py-2 text-xs font-bold ${i === 0 ? 'text-red-500' : i === 6 ? 'text-blue-500' : 'text-slate-500'}`}>{d}</div>
         ))}
       </div>
-
-      {/* Days grid */}
       <div className="grid grid-cols-7 divide-x divide-y divide-slate-100">
         {cells.map((day, idx) => {
           if (!day) return <div key={`e-${idx}`} className="min-h-[70px] sm:min-h-[90px] bg-slate-50/50" />;
           const dateKey = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-          // ── Sort bookings by time ──
           const rawBookings = bookingsByDate[dateKey] || [];
           const dayBookings = [...rawBookings].sort((a, b) => (a.bookingTime || '').localeCompare(b.bookingTime || ''));
           const isToday = dateKey === todayKey;
           const colIdx = (firstDayOfWeek + day - 1) % 7;
           const isWeekend = colIdx === 0 || colIdx === 6;
           const activeBookings = dayBookings.filter(b => b.status !== 'ยกเลิกนัด' && b.status !== 'เลื่อนนัด');
-
           return (
-            <div
-              key={day}
-              onClick={() => onSelectDate(dateKey)}
-              className={`min-h-[70px] sm:min-h-[90px] p-1 cursor-pointer transition-all hover:bg-blue-50 group relative
-                ${isToday ? 'bg-blue-50/70' : ''}
-              `}
-            >
-              {/* Date number */}
+            <div key={day} onClick={() => onSelectDate(dateKey)}
+              className={`min-h-[70px] sm:min-h-[90px] p-1 cursor-pointer transition-all hover:bg-blue-50 group relative ${isToday ? 'bg-blue-50/70' : ''}`}>
               <div className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold mb-1
-                ${isToday ? 'bg-blue-600 text-white' : isWeekend ? (colIdx===0?'text-red-500':'text-blue-500') : 'text-slate-700'}
-              `}>{day}</div>
-
-              {/* Booking chips — sorted by time, new customers highlighted */}
+                ${isToday ? 'bg-blue-600 text-white' : isWeekend ? (colIdx===0?'text-red-500':'text-blue-500') : 'text-slate-700'}`}>{day}</div>
               <div className="space-y-0.5">
                 {dayBookings.slice(0, 3).map((b, bi) => {
                   const sc = STATUS_CONFIG[b.status] || STATUS_CONFIG['ยังไม่มา'];
@@ -922,62 +1060,33 @@ const CalendarView = ({ bookings, patients, onSelectDate, onAddBooking }) => {
                   return (
                     <div key={bi}
                       className={`text-[9px] sm:text-[10px] font-semibold px-1 py-0.5 rounded leading-tight flex items-center gap-0.5
-                      ${newCust
-                        ? 'bg-amber-100 text-amber-800 border border-amber-300'
-                        : `${sc.bg} ${sc.text}`
-                      }`}>
+                      ${newCust ? 'bg-amber-100 text-amber-800 border border-amber-300' : `${sc.bg} ${sc.text}`}`}>
                       {newCust && <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" />}
                       <span className="truncate">{b.bookingTime} น. {b.customerName}</span>
                     </div>
                   );
                 })}
-                {dayBookings.length > 3 && (
-                  <div className="text-[9px] text-slate-400 font-bold pl-0.5">+{dayBookings.length - 3} อื่นๆ</div>
-                )}
+                {dayBookings.length > 3 && <div className="text-[9px] text-slate-400 font-bold pl-0.5">+{dayBookings.length - 3} อื่นๆ</div>}
               </div>
-
-              {/* Total badge */}
               {activeBookings.length > 0 && (
                 <div className="absolute top-1 right-1 w-4 h-4 bg-blue-500 text-white rounded-full text-[9px] font-bold flex items-center justify-center">
                   {activeBookings.length}
                 </div>
               )}
-
-              {/* Add button on hover */}
-              <button
-                onClick={e => { e.stopPropagation(); onAddBooking(dateKey); }}
-                className="absolute bottom-1 right-1 w-5 h-5 bg-blue-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center shadow-sm hover:bg-blue-600"
-              >
+              <button onClick={e => { e.stopPropagation(); onAddBooking(dateKey); }}
+                className="absolute bottom-1 right-1 w-5 h-5 bg-blue-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center shadow-sm hover:bg-blue-600">
                 <Plus className="w-3 h-3" />
               </button>
             </div>
           );
         })}
       </div>
-
-      {/* Legend */}
-      <div className="px-4 py-2 bg-slate-50 border-t border-slate-100 flex flex-wrap gap-x-4 gap-y-1.5">
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-full bg-amber-400 border border-amber-500" />
-          <span className="text-[10px] text-amber-700 font-bold">ลูกค้าใหม่</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-full bg-blue-400" />
-          <span className="text-[10px] text-slate-500">ลูกค้าเก่า</span>
-        </div>
-        {Object.entries(STATUS_CONFIG).map(([label, cfg]) => (
-          <div key={label} className="flex items-center gap-1">
-            <div className={`w-2 h-2 rounded-full ${cfg.dot}`} />
-            <span className="text-[10px] text-slate-500">{label}</span>
-          </div>
-        ))}
-      </div>
     </div>
   );
 };
 
 // ─── Dashboard Tab ────────────────────────────────────────────────────────────
-const DashboardTab = ({ bookings, patients, isOffline, initialBooking, onPendingBookingConsumed }) => {
+const DashboardTab = ({ bookings, patients, isOffline, initialBooking, onPendingBookingConsumed, records }) => {
   const [reportDate, setReportDate] = useState(todayStr());
   const [listModal, setListModal] = useState(null);
   const [selectedBooking, setSelectedBooking] = useState(null);
@@ -993,14 +1102,12 @@ const DashboardTab = ({ bookings, patients, isOffline, initialBooking, onPending
     }
   }, [initialBooking]);
 
-  // ── Sort day bookings by time ──
   const dayBookings = [...bookings.filter(b => b.bookingDate === reportDate)]
     .sort((a, b) => (a.bookingTime || '').localeCompare(b.bookingTime || ''));
 
   const byStatus = (s) => s === 'ทั้งหมด' ? dayBookings : dayBookings.filter(b => b.status === s);
   const byCall = (s) => dayBookings.filter(b => (b.callStatus || 'ยังไม่โทรคอนเฟิม') === s);
 
-  // ── NEW/RETURNING customer counts ──
   const newCustomerBookings = dayBookings.filter(b => isNewCustomer(b, patients));
   const returningCustomerBookings = dayBookings.filter(b => !isNewCustomer(b, patients));
 
@@ -1020,18 +1127,8 @@ const DashboardTab = ({ bookings, patients, isOffline, initialBooking, onPending
     setEditBooking(null); setAddBooking(null);
   };
 
-  const handleCalendarSelectDate = (dateKey) => {
-    setReportDate(dateKey);
-    setViewMode('list');
-  };
-
-  const handleCalendarAddBooking = (dateKey) => {
-    setAddBooking(EMPTY_BOOKING(dateKey));
-  };
-
   return (
     <div className="space-y-5">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold text-gray-800">รายงานประจำวัน</h2>
@@ -1039,16 +1136,12 @@ const DashboardTab = ({ bookings, patients, isOffline, initialBooking, onPending
         </div>
         <div className="flex items-center gap-2">
           <div className="flex items-center bg-slate-100 rounded-xl p-1 gap-1">
-            <button
-              onClick={() => setViewMode('calendar')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'calendar' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-            >
+            <button onClick={() => setViewMode('calendar')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'calendar' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
               <Grid className="w-3.5 h-3.5" /> ปฏิทิน
             </button>
-            <button
-              onClick={() => setViewMode('list')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'list' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-            >
+            <button onClick={() => setViewMode('list')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'list' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
               <List className="w-3.5 h-3.5" /> รายการ
             </button>
           </div>
@@ -1059,20 +1152,14 @@ const DashboardTab = ({ bookings, patients, isOffline, initialBooking, onPending
         </div>
       </div>
 
-      {/* ── CALENDAR VIEW ── */}
       {viewMode === 'calendar' && (
-        <CalendarView
-          bookings={bookings}
-          patients={patients}
-          onSelectDate={handleCalendarSelectDate}
-          onAddBooking={handleCalendarAddBooking}
-        />
+        <CalendarView bookings={bookings} patients={patients}
+          onSelectDate={(d) => { setReportDate(d); setViewMode('list'); }}
+          onAddBooking={(d) => setAddBooking(EMPTY_BOOKING(d))} />
       )}
 
-      {/* ── LIST VIEW ── */}
       {viewMode === 'list' && (
         <>
-          {/* Date picker */}
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-3 bg-white border border-gray-200 rounded-2xl px-3 py-2 shadow-sm hover:border-blue-300 transition-colors">
               <div className="p-1.5 bg-blue-50 text-blue-600 rounded-lg shrink-0"><Calendar className="w-4 h-4" /></div>
@@ -1087,46 +1174,61 @@ const DashboardTab = ({ bookings, patients, isOffline, initialBooking, onPending
             </button>
           </div>
 
-          {/* ── NEW: Customer Type Cards ── */}
           <div>
             <p className="text-[10px] uppercase font-bold text-gray-400 tracking-widest mb-2 px-1 flex items-center gap-1.5">
               <Users className="w-3.5 h-3.5" /> ประเภทลูกค้าวันนี้
             </p>
             <div className="grid grid-cols-2 gap-3">
-              <div
-                onClick={() => setListModal({ title: '✨ ลูกค้าใหม่', items: newCustomerBookings })}
-                className="cursor-pointer hover:-translate-y-1 bg-gradient-to-br from-amber-50 to-orange-100 p-4 sm:p-5 rounded-2xl shadow-sm border border-amber-200 flex items-center gap-4 hover:shadow-lg transition-all group"
-              >
+              <div onClick={() => setListModal({ title: '✨ ลูกค้าใหม่', items: newCustomerBookings })}
+                className="cursor-pointer hover:-translate-y-1 bg-gradient-to-br from-amber-50 to-orange-100 p-4 sm:p-5 rounded-2xl shadow-sm border border-amber-200 flex items-center gap-4 hover:shadow-lg transition-all group">
                 <div className="p-3 bg-amber-400 text-white rounded-2xl shadow-sm shrink-0 group-hover:scale-110 transition-transform">
                   <UserPlus className="w-6 h-6" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[10px] sm:text-xs uppercase font-bold text-amber-600 tracking-wider leading-tight">ลูกค้าใหม่</p>
                   <h3 className="text-3xl sm:text-4xl font-bold text-amber-800 leading-none mt-0.5">{newCustomerBookings.length}</h3>
-                  <p className="text-[10px] text-amber-500 font-medium mt-0.5">
-                    {dayBookings.length > 0 ? Math.round((newCustomerBookings.length / dayBookings.length) * 100) : 0}% ของวัน
-                  </p>
+                  <p className="text-[10px] text-amber-500 font-medium mt-0.5">{dayBookings.length > 0 ? Math.round((newCustomerBookings.length / dayBookings.length) * 100) : 0}% ของวัน</p>
                 </div>
               </div>
-              <div
-                onClick={() => setListModal({ title: '⭐ ลูกค้าเก่า', items: returningCustomerBookings })}
-                className="cursor-pointer hover:-translate-y-1 bg-gradient-to-br from-purple-50 to-violet-100 p-4 sm:p-5 rounded-2xl shadow-sm border border-purple-200 flex items-center gap-4 hover:shadow-lg transition-all group"
-              >
+              <div onClick={() => setListModal({ title: '⭐ ลูกค้าเก่า', items: returningCustomerBookings })}
+                className="cursor-pointer hover:-translate-y-1 bg-gradient-to-br from-purple-50 to-violet-100 p-4 sm:p-5 rounded-2xl shadow-sm border border-purple-200 flex items-center gap-4 hover:shadow-lg transition-all group">
                 <div className="p-3 bg-purple-500 text-white rounded-2xl shadow-sm shrink-0 group-hover:scale-110 transition-transform">
                   <Star className="w-6 h-6" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[10px] sm:text-xs uppercase font-bold text-purple-600 tracking-wider leading-tight">ลูกค้าเก่า</p>
                   <h3 className="text-3xl sm:text-4xl font-bold text-purple-800 leading-none mt-0.5">{returningCustomerBookings.length}</h3>
-                  <p className="text-[10px] text-purple-500 font-medium mt-0.5">
-                    {dayBookings.length > 0 ? Math.round((returningCustomerBookings.length / dayBookings.length) * 100) : 0}% ของวัน
-                  </p>
+                  <p className="text-[10px] text-purple-500 font-medium mt-0.5">{dayBookings.length > 0 ? Math.round((returningCustomerBookings.length / dayBookings.length) * 100) : 0}% ของวัน</p>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Stats */}
+          {/* ── Membership Tier Stats ── */}
+          <div>
+            <p className="text-[10px] uppercase font-bold text-gray-400 tracking-widest mb-2 px-1 flex items-center gap-1.5">
+              <Crown className="w-3.5 h-3.5 text-amber-500" /> ประเภทสมาชิกวันนี้
+            </p>
+            <div className="grid grid-cols-5 gap-2">
+              {TIER_KEYS.map(key => {
+                const cfg = MEMBERSHIP_TIERS[key];
+                const IconC = cfg.Icon;
+                const count = dayBookings.filter(b => b.hn && getPatientTier(records, b.hn) === key).length;
+                return (
+                  <div key={key}
+                    onClick={() => setListModal({ title: cfg.label, items: dayBookings.filter(b => b.hn && getPatientTier(records, b.hn) === key) })}
+                    className={`cursor-pointer hover:-translate-y-0.5 bg-gradient-to-br ${cfg.gradient} p-2.5 sm:p-3 rounded-2xl border ${cfg.badgeBorder} shadow-sm hover:shadow-md transition-all flex flex-col items-center text-center`}>
+                    <div className={`p-2 ${cfg.iconBg} ${cfg.iconColor} rounded-xl mb-1.5 shadow-sm`}>
+                      <IconC className="w-4 h-4" />
+                    </div>
+                    <p className={`text-[8px] sm:text-[10px] font-bold ${cfg.badgeText} leading-tight mb-0.5`}>{cfg.label}</p>
+                    <h3 className="text-xl sm:text-2xl font-bold text-slate-800">{count}</h3>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
           <div>
             <p className="text-[10px] uppercase font-bold text-gray-400 tracking-widest mb-2 px-1 flex items-center gap-1.5">
               <CalendarCheck className="w-3.5 h-3.5" /> สถานะนัดหมาย
@@ -1141,40 +1243,24 @@ const DashboardTab = ({ bookings, patients, isOffline, initialBooking, onPending
             </div>
           </div>
 
-          {/* Call Stats */}
           <div>
             <p className="text-[10px] uppercase font-bold text-gray-400 tracking-widest mb-2 px-1 flex items-center gap-1.5">
               <PhoneCall className="w-3.5 h-3.5" /> สถานะการโทรยืนยัน
             </p>
             <div className="grid grid-cols-3 gap-2 sm:gap-3">
-              <StatCard label="ยังไม่โทรคอนเฟิม" value={byCall('ยังไม่โทรคอนเฟิม').length} Icon={PhoneMissed} bg="bg-slate-100" text="text-slate-500"
-                onClick={() => setListModal({ title: 'ยังไม่โทรคอนเฟิม', items: byCall('ยังไม่โทรคอนเฟิม') })} />
-              <StatCard label="คอนเฟิมนัดแล้ว" value={byCall('คอนเฟิมนัดแล้ว').length} Icon={PhoneIncoming} bg="bg-emerald-50" text="text-emerald-600"
-                onClick={() => setListModal({ title: 'คอนเฟิมนัดแล้ว', items: byCall('คอนเฟิมนัดแล้ว') })} />
-              <StatCard label="ไม่รับสายรอโทรใหม่" value={byCall('ไม่รับสายรอโทรใหม่').length} Icon={PhoneOff} bg="bg-amber-50" text="text-amber-500"
-                onClick={() => setListModal({ title: 'ไม่รับสายรอโทรใหม่', items: byCall('ไม่รับสายรอโทรใหม่') })} />
+              <StatCard label="ยังไม่โทรคอนเฟิม" value={byCall('ยังไม่โทรคอนเฟิม').length} Icon={PhoneMissed} bg="bg-slate-100" text="text-slate-500" onClick={() => setListModal({ title: 'ยังไม่โทรคอนเฟิม', items: byCall('ยังไม่โทรคอนเฟิม') })} />
+              <StatCard label="คอนเฟิมนัดแล้ว" value={byCall('คอนเฟิมนัดแล้ว').length} Icon={PhoneIncoming} bg="bg-emerald-50" text="text-emerald-600" onClick={() => setListModal({ title: 'คอนเฟิมนัดแล้ว', items: byCall('คอนเฟิมนัดแล้ว') })} />
+              <StatCard label="ไม่รับสายรอโทรใหม่" value={byCall('ไม่รับสายรอโทรใหม่').length} Icon={PhoneOff} bg="bg-amber-50" text="text-amber-500" onClick={() => setListModal({ title: 'ไม่รับสายรอโทรใหม่', items: byCall('ไม่รับสายรอโทรใหม่') })} />
             </div>
           </div>
 
-          {/* Booking list — sorted by time, new customers marked */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="px-5 py-3 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-100 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-blue-600" />
                 <h2 className="font-bold text-gray-800 text-sm">ตารางนัดหมายวันที่ {fmtDateTH(reportDate)}</h2>
               </div>
-              <div className="flex items-center gap-2">
-                {/* Mini legend */}
-                <div className="hidden sm:flex items-center gap-3">
-                  <span className="flex items-center gap-1 text-[10px] font-bold text-amber-600">
-                    <UserPlus className="w-3 h-3" /> ใหม่
-                  </span>
-                  <span className="flex items-center gap-1 text-[10px] font-bold text-purple-600">
-                    <Star className="w-3 h-3" /> เก่า
-                  </span>
-                </div>
-                <span className="text-xs font-bold text-blue-600 bg-blue-100 px-3 py-1 rounded-full">{dayBookings.length} รายการ</span>
-              </div>
+              <span className="text-xs font-bold text-blue-600 bg-blue-100 px-3 py-1 rounded-full">{dayBookings.length} รายการ</span>
             </div>
             {dayBookings.length === 0 ? (
               <div className="p-10 text-center">
@@ -1194,16 +1280,17 @@ const DashboardTab = ({ bookings, patients, isOffline, initialBooking, onPending
                   const cc = CALL_CONFIG[b.callStatus || 'ยังไม่โทรคอนเฟิม'];
                   const CallIcon = cc.icon;
                   const newCust = isNewCustomer(b, patients);
+                  const tier = b.hn ? getPatientTier(records, b.hn) : DEFAULT_TIER;
+                  const tierCfg = MEMBERSHIP_TIERS[tier] || MEMBERSHIP_TIERS[DEFAULT_TIER];
                   return (
                     <div key={b.id} onClick={() => setSelectedBooking(b)}
                       className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors group
                         ${newCust ? 'hover:bg-amber-50 border-l-2 border-amber-400' : 'hover:bg-slate-50 border-l-2 border-transparent'}`}>
-                      {/* Time slot number */}
                       <div className="text-slate-300 text-[10px] font-bold w-4 shrink-0 text-center">{idx + 1}</div>
                       <div className={`w-2 h-2 rounded-full shrink-0 ${sc.dot}`} />
                       <div className="text-blue-700 font-bold text-sm w-12 shrink-0">{b.bookingTime ? `${b.bookingTime} น.` : '?'}</div>
                       <div className="flex-grow min-w-0">
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <p className={`font-bold text-sm truncate transition-colors ${newCust ? 'text-amber-800 group-hover:text-amber-900' : 'text-slate-800 group-hover:text-blue-700'}`}>
                             {b.customerName}
                           </p>
@@ -1211,10 +1298,8 @@ const DashboardTab = ({ bookings, patients, isOffline, initialBooking, onPending
                             <span className="shrink-0 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-700 border border-amber-300">
                               <UserPlus className="w-2.5 h-2.5" /> ใหม่
                             </span>
-                          ) : (
-                            <span className="shrink-0 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-purple-100 text-purple-600">
-                              <Star className="w-2.5 h-2.5" /> เก่า
-                            </span>
+                          ) : b.hn && (
+                            <MemberBadge tier={tier} size="xs" />
                           )}
                         </div>
                         <p className="text-xs text-slate-400 truncate">{b.procedure || '-'}</p>
@@ -1233,12 +1318,11 @@ const DashboardTab = ({ bookings, patients, isOffline, initialBooking, onPending
         </>
       )}
 
-      {/* Modals */}
-      {listModal && <BookingListModal title={listModal.title} bookings={listModal.items} patients={patients} onClose={() => setListModal(null)} onSelectBooking={b => setSelectedBooking(b)} />}
+      {listModal && <BookingListModal title={listModal.title} bookings={listModal.items} patients={patients} records={records} onClose={() => setListModal(null)} onSelectBooking={b => setSelectedBooking(b)} />}
       {selectedBooking && (
         <BookingDetailModal booking={selectedBooking} onClose={() => setSelectedBooking(null)}
           onUpdateStatus={handleUpdateStatus} onUpdateCallStatus={handleUpdateCallStatus}
-          onEdit={b => setEditBooking(b)} patients={patients} allBookings={bookings} />
+          onEdit={b => setEditBooking(b)} patients={patients} allBookings={bookings} records={records} />
       )}
       {(editBooking || addBooking) && (
         <BookingFormModal booking={editBooking || addBooking} patients={patients} allBookings={bookings}
@@ -1364,7 +1448,6 @@ const SummaryTab = ({ bookings }) => {
 const PatientsTab = ({ records, user, isOffline, onAddBookingForPatient }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [patientModalHN, setPatientModalHN] = useState(null);
-  const [followUpCustomer, setFollowUpCustomer] = useState(null);
   const [editingRecord, setEditingRecord] = useState(null);
   const [recordToDelete, setRecordToDelete] = useState(null);
   const [alertMessage, setAlertMessage] = useState('');
@@ -1382,8 +1465,7 @@ const PatientsTab = ({ records, user, isOffline, onAddBookingForPatient }) => {
   const [editBeforeImages, setEditBeforeImages] = useState([]);
   const [editAfterImages, setEditAfterImages] = useState([]);
   const [activeSubTab, setActiveSubTab] = useState('search');
-  // Inline add-procedure panel inside patient modal
-  const [addProcPatient, setAddProcPatient] = useState(null); // {fullName, hn, phone}
+  const [addProcPatient, setAddProcPatient] = useState(null);
   const [procForm, setProcForm] = useState({ serviceDate: today, service: '', price: '', note: '' });
   const [procBefore, setProcBefore] = useState([]); const [procBeforePrev, setProcBeforePrev] = useState([]);
   const [procAfter, setProcAfter] = useState([]);  const [procAfterPrev, setProcAfterPrev] = useState([]);
@@ -1391,10 +1473,12 @@ const PatientsTab = ({ records, user, isOffline, onAddBookingForPatient }) => {
   const [procSubmitting, setProcSubmitting] = useState(false);
   const procBeforeRef = useRef(null);
   const procAfterRef = useRef(null);
-  // Edit patient info (name/phone) inline
-  const [editPatientHN, setEditPatientHN] = useState(null); // HN of patient being edited
+  const [editPatientHN, setEditPatientHN] = useState(null);
   const [editPatientForm, setEditPatientForm] = useState({ fullName: '', phone: '' });
   const [editPatientSaving, setEditPatientSaving] = useState(false);
+  // Membership tier selector
+  const [membershipSelectorHN, setMembershipSelectorHN] = useState(null);
+  const [tierFilterKey, setTierFilterKey] = useState('all');
 
   useEffect(() => {
     const handleKey = (e) => {
@@ -1410,18 +1494,23 @@ const PatientsTab = ({ records, user, isOffline, onAddBookingForPatient }) => {
 
   const groupedMap = new Map();
   records.forEach(r => {
-    if (!groupedMap.has(r.hn)) groupedMap.set(r.hn, { hn: r.hn, fullName: r.fullName, phone: r.phone, latestDate: r.serviceDate, count: 1, records: [r] });
+    if (!groupedMap.has(r.hn)) groupedMap.set(r.hn, { hn: r.hn, fullName: r.fullName, phone: r.phone, latestDate: r.serviceDate, count: 1, records: [r], membershipTier: r.membershipTier || DEFAULT_TIER });
     else {
       const p = groupedMap.get(r.hn);
       p.count++; p.records.push(r);
       if (new Date(r.serviceDate) > new Date(p.latestDate)) p.latestDate = r.serviceDate;
+      if (r.membershipTier && MEMBERSHIP_TIERS[r.membershipTier]) p.membershipTier = r.membershipTier;
     }
   });
   const allPatients = Array.from(groupedMap.values()).sort((a, b) => new Date(b.latestDate) - new Date(a.latestDate));
+
   const filteredPatients = allPatients.filter(p => {
     const q = searchQuery.toLowerCase();
-    return (p.fullName || '').toLowerCase().includes(q) || (p.hn || '').toLowerCase().includes(q) || (p.phone || '').includes(q);
+    const matchesSearch = (p.fullName || '').toLowerCase().includes(q) || (p.hn || '').toLowerCase().includes(q) || (p.phone || '').includes(q);
+    const matchesTier = tierFilterKey === 'all' || p.membershipTier === tierFilterKey;
+    return matchesSearch && matchesTier;
   });
+
   const modalPatient = patientModalHN ? groupedMap.get(patientModalHN) : null;
 
   const compressImage = (file) => new Promise(resolve => {
@@ -1466,7 +1555,6 @@ const PatientsTab = ({ records, user, isOffline, onAddBookingForPatient }) => {
 
   const resetImages = () => { setBeforeFiles([]); setBeforePreviews([]); setAfterFiles([]); setAfterPreviews([]); setEditBeforeImages([]); setEditAfterImages([]); };
 
-  // ── Add procedure helpers ──
   const resetProc = () => { setProcForm({ serviceDate: today, service: '', price: '', note: '' }); setProcStaff({ sale: '', assistant: '', appointedBy: '', doctor: '' }); setProcBefore([]); setProcBeforePrev([]); setProcAfter([]); setProcAfterPrev([]); };
 
   const handleProcImageAdd = (e, type) => {
@@ -1491,6 +1579,7 @@ const PatientsTab = ({ records, user, isOffline, onAddBookingForPatient }) => {
       const b64After  = await Promise.all(procAfter.map(f => compressImage(f)));
       await addDoc(RECORDS_PATH(), {
         fullName: addProcPatient.fullName, hn: addProcPatient.hn, phone: addProcPatient.phone || '',
+        membershipTier: addProcPatient.membershipTier || DEFAULT_TIER,
         serviceDate: procForm.serviceDate, service: procForm.service,
         price: procForm.price ? Number(procForm.price) : null,
         note: procForm.note || '',
@@ -1505,12 +1594,10 @@ const PatientsTab = ({ records, user, isOffline, onAddBookingForPatient }) => {
     finally { setProcSubmitting(false); }
   };
 
-  // ── Edit patient info helpers ──
   const saveEditPatient = async () => {
     if (!editPatientHN || !editPatientForm.fullName) return;
     setEditPatientSaving(true);
     try {
-      // Update ALL records that belong to this HN
       const toUpdate = records.filter(r => r.hn === editPatientHN);
       await Promise.all(toUpdate.map(r =>
         updateDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'patient_records', r.id), {
@@ -1522,33 +1609,16 @@ const PatientsTab = ({ records, user, isOffline, onAddBookingForPatient }) => {
     } catch (err) { setAlertMessage('เกิดข้อผิดพลาด: ' + err.message); }
     finally { setEditPatientSaving(false); }
   };
-  const staffRequired = !formData.sale || !formData.assistant || !formData.doctor;
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!formData.fullName || !formData.hn || !formData.service || !formData.serviceDate || staffRequired) return;
-    setSubmitting(true);
-    try {
-      const b64Before = await Promise.all(beforeFiles.map(f => compressImage(f)));
-      const b64After = await Promise.all(afterFiles.map(f => compressImage(f)));
-      const newRecord = {
-        fullName: formData.fullName, hn: formData.hn, phone: formData.phone || '',
-        serviceDate: formData.serviceDate, service: formData.service,
-        price: formData.price ? Number(formData.price) : null, note: formData.note || '',
-        sale: formData.sale || '', assistant: formData.assistant || '',
-        appointedBy: formData.appointedBy || '', doctor: formData.doctor || '',
-        imagesBefore: b64Before, imagesAfter: b64After, images: [],
-        createdBy: user?.uid || 'anonymous',
-        createdAt: db && !isOffline ? serverTimestamp() : new Date()
-      };
-      if (db && !isOffline) await addDoc(RECORDS_PATH(), newRecord);
-      else setAlertMessage("ขณะนี้ระบบทำงานในโหมดออฟไลน์");
-      setFormData(EMPTY_RECORD(today)); resetImages();
-      if (followUpCustomer) { setFollowUpCustomer(null); }
-      setActiveSubTab('search');
-    } catch (error) { setAlertMessage(`เกิดข้อผิดพลาด: ${error.message}`); }
-    finally { setSubmitting(false); }
+  // ── Save membership tier (update all records for that HN) ──
+  const saveMembershipTier = async (hn, newTier) => {
+    const toUpdate = records.filter(r => r.hn === hn);
+    await Promise.all(toUpdate.map(r =>
+      updateDoc(doc(db, 'artifacts', APP_ID, 'public', 'data', 'patient_records', r.id), { membershipTier: newTier })
+    ));
   };
+
+  const staffRequired = !formData.sale || !formData.assistant || !formData.doctor;
 
   const handleUpdate = async (e) => {
     e.preventDefault();
@@ -1589,6 +1659,10 @@ const PatientsTab = ({ records, user, isOffline, onAddBookingForPatient }) => {
     setBeforeFiles([]); setBeforePreviews([]); setAfterFiles([]); setAfterPreviews([]);
   };
 
+  // Tier counts for filter tabs
+  const tierCounts = { all: allPatients.length };
+  TIER_KEYS.forEach(k => { tierCounts[k] = allPatients.filter(p => p.membershipTier === k).length; });
+
   return (
     <div>
       <input type="file" ref={fileBeforeRef} onChange={e => handleImageAdd(e, 'before')} accept="image/*" multiple className="hidden" />
@@ -1598,7 +1672,7 @@ const PatientsTab = ({ records, user, isOffline, onAddBookingForPatient }) => {
         <button onClick={() => setActiveSubTab('search')} className={`flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${activeSubTab === 'search' ? 'bg-white text-purple-700 shadow-sm' : 'text-purple-400 hover:text-purple-600'}`}>
           <Search className="w-4 h-4" /> ค้นหาประวัติลูกค้า
         </button>
-        <button onClick={() => { setActiveSubTab('add'); setFollowUpCustomer(null); setFormData(EMPTY_RECORD(today)); resetImages(); }} className={`flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${activeSubTab === 'add' ? 'bg-white text-purple-700 shadow-sm' : 'text-purple-400 hover:text-purple-600'}`}>
+        <button onClick={() => { setActiveSubTab('add'); setFormData(EMPTY_RECORD(today)); resetImages(); }} className={`flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${activeSubTab === 'add' ? 'bg-white text-purple-700 shadow-sm' : 'text-purple-400 hover:text-purple-600'}`}>
           <Plus className="w-4 h-4" /> บันทึกประวัติใหม่
         </button>
       </div>
@@ -1613,32 +1687,40 @@ const PatientsTab = ({ records, user, isOffline, onAddBookingForPatient }) => {
             </div>
           </div>
           <div className="p-6 space-y-4">
-            <div>
-              <label className="block text-sm font-semibold text-purple-900 mb-1.5">ชื่อ-นามสกุล <span className="text-red-500">*</span></label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><User className="h-4 w-4 text-purple-400" /></div>
-                <input type="text" name="fullName" value={formData.fullName} onChange={handleInputChange} required placeholder="เช่น สมหญิง สวยงาม"
-                  className="pl-10 w-full rounded-xl border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2.5 text-sm text-slate-700" />
+            {[
+              { name: 'fullName', label: 'ชื่อ-นามสกุล', Icon: User, req: true, ph: 'เช่น สมหญิง สวยงาม' },
+              { name: 'hn', label: 'เลข HN', Icon: Hash, req: true, ph: 'HN12345' },
+              { name: 'phone', label: 'เบอร์โทรศัพท์', Icon: Phone, req: false, ph: '08X-XXX-XXXX', type: 'tel' },
+            ].map(({ name, label, Icon, req, ph, type }) => (
+              <div key={name}>
+                <label className="block text-sm font-semibold text-purple-900 mb-1.5">{label} {req && <span className="text-red-500">*</span>}</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Icon className="h-4 w-4 text-purple-400" /></div>
+                  <input type={type || 'text'} name={name} value={formData[name]} onChange={handleInputChange} required={req} placeholder={ph}
+                    className="pl-10 w-full rounded-xl border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2.5 text-sm text-slate-700" />
+                </div>
               </div>
-            </div>
+            ))}
+            {/* Membership Tier in add form */}
             <div>
-              <label className="block text-sm font-semibold text-purple-900 mb-1.5">เลข HN <span className="text-red-500">*</span></label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Hash className="h-4 w-4 text-purple-400" /></div>
-                <input type="text" name="hn" value={formData.hn} onChange={handleInputChange} required placeholder="HN12345"
-                  className="pl-10 w-full rounded-xl border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2.5 text-sm text-slate-700" />
+              <label className="block text-sm font-semibold text-purple-900 mb-1.5 flex items-center gap-1.5"><Crown className="w-4 h-4 text-amber-500" /> ประเภทสมาชิก</label>
+              <div className="grid grid-cols-1 gap-1.5">
+                {TIER_KEYS.map(key => {
+                  const cfg = MEMBERSHIP_TIERS[key];
+                  const IconC = cfg.Icon;
+                  const isSelected = (formData.membershipTier || DEFAULT_TIER) === key;
+                  return (
+                    <button key={key} type="button"
+                      onClick={() => setFormData(f => ({ ...f, membershipTier: key }))}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-xl border-2 text-left transition-all text-sm font-bold
+                        ${isSelected ? `bg-gradient-to-r ${cfg.gradient} ${cfg.badgeBorder} text-slate-800` : 'border-slate-100 text-slate-500 hover:border-slate-200'}`}>
+                      <IconC className={`w-4 h-4 shrink-0 ${isSelected ? cfg.badgeText : 'text-slate-300'}`} />
+                      {cfg.label}
+                      {isSelected && <span className="ml-auto text-[10px] text-emerald-600 font-bold">✓ เลือกแล้ว</span>}
+                    </button>
+                  );
+                })}
               </div>
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-purple-900 mb-1.5">เบอร์โทรศัพท์</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Phone className="h-4 w-4 text-purple-400" /></div>
-                <input type="tel" name="phone" value={formData.phone} onChange={handleInputChange} placeholder="08X-XXX-XXXX"
-                  className="pl-10 w-full rounded-xl border border-purple-200 focus:border-purple-500 focus:ring focus:ring-purple-200 px-3 py-2.5 text-sm text-slate-700" />
-              </div>
-            </div>
-            <div className="bg-purple-50 rounded-xl p-3 border border-purple-100">
-              <p className="text-[11px] text-purple-600 font-medium">✅ ข้อมูลจะถูกบันทึกในระบบและสามารถค้นหา HN ได้ทันที</p>
             </div>
             <button
               onClick={async () => {
@@ -1649,6 +1731,7 @@ const PatientsTab = ({ records, user, isOffline, onAddBookingForPatient }) => {
                     fullName: formData.fullName.trim(),
                     hn: formData.hn.trim(),
                     phone: formData.phone?.trim() || '',
+                    membershipTier: formData.membershipTier || DEFAULT_TIER,
                     serviceDate: today,
                     service: 'ลงทะเบียนลูกค้าใหม่',
                     price: null, note: '', sale: '', assistant: '', appointedBy: '', doctor: '',
@@ -1672,7 +1755,7 @@ const PatientsTab = ({ records, user, isOffline, onAddBookingForPatient }) => {
 
       {activeSubTab === 'search' && (
         <div>
-          <div className="bg-white p-4 rounded-2xl shadow-sm border border-purple-100 mb-6">
+          <div className="bg-white p-4 rounded-2xl shadow-sm border border-purple-100 mb-4">
             <div className="relative w-full">
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><Search className="h-5 w-5 text-purple-400" /></div>
               <input type="text" placeholder="ค้นหาลูกค้าด้วย ชื่อ, เบอร์โทรศัพท์ หรือ รหัส HN..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
@@ -1680,10 +1763,38 @@ const PatientsTab = ({ records, user, isOffline, onAddBookingForPatient }) => {
               {searchQuery && <button onClick={() => setSearchQuery('')} className="absolute inset-y-0 right-0 pr-4 flex items-center text-purple-400 hover:text-purple-600"><X className="h-5 w-5 bg-purple-100 rounded-full p-0.5" /></button>}
             </div>
           </div>
+
+          {/* ── Tier Filter Tabs ── */}
+          <div className="flex gap-1.5 overflow-x-auto pb-2 mb-4" style={{ scrollbarWidth: 'none' }}>
+            <button
+              onClick={() => setTierFilterKey('all')}
+              className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border-2 transition-all
+                ${tierFilterKey === 'all' ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-slate-500 border-slate-200 hover:border-purple-300'}`}>
+              <Users className="w-3.5 h-3.5" /> ทั้งหมด
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${tierFilterKey === 'all' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'}`}>{tierCounts.all}</span>
+            </button>
+            {TIER_KEYS.map(key => {
+              const cfg = MEMBERSHIP_TIERS[key];
+              const IconC = cfg.Icon;
+              const isActive = tierFilterKey === key;
+              return (
+                <button key={key}
+                  onClick={() => setTierFilterKey(key)}
+                  className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border-2 transition-all
+                    ${isActive ? `bg-gradient-to-r ${cfg.gradient} ${cfg.badgeBorder} text-slate-800 shadow-sm` : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'}`}>
+                  <IconC className={`w-3.5 h-3.5 ${isActive ? cfg.badgeText : 'text-slate-400'}`} />
+                  {cfg.label}
+                  <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${isActive ? cfg.badgeBg + ' ' + cfg.badgeText : 'bg-slate-100 text-slate-500'}`}>{tierCounts[key] || 0}</span>
+                </button>
+              );
+            })}
+          </div>
+
           <div className="mb-5 flex items-center justify-between px-1">
             <h2 className="text-xl font-bold text-purple-900">{searchQuery ? 'ผลการค้นหา' : 'รายชื่อลูกค้าทั้งหมด'}</h2>
             <span className="bg-purple-100 text-purple-800 text-xs font-bold px-3 py-1 rounded-full border border-purple-200">{filteredPatients.length} ท่าน</span>
           </div>
+
           {filteredPatients.length === 0 ? (
             <div className="bg-white rounded-2xl border border-dashed border-purple-200 p-12 text-center shadow-sm">
               <div className="bg-purple-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4"><User className="w-10 h-10 text-purple-300" /></div>
@@ -1695,14 +1806,19 @@ const PatientsTab = ({ records, user, isOffline, onAddBookingForPatient }) => {
               {filteredPatients.map(patient => {
                 const totalSpend = patient.records.reduce((s, r) => s + (r.price || 0), 0);
                 const totalImages = patient.records.reduce((s, r) => s + getRecordImages(r).length, 0);
+                const tierCfg = MEMBERSHIP_TIERS[patient.membershipTier] || MEMBERSHIP_TIERS[DEFAULT_TIER];
                 return (
-                  <div key={patient.hn} className="bg-white rounded-2xl border border-slate-100 hover:border-purple-300 hover:shadow-md transition-all group">
+                  <div key={patient.hn} className={`bg-white rounded-2xl border-2 hover:shadow-md transition-all group ${tierCfg.badgeBorder} hover:border-purple-300`}>
                     <div className="px-4 py-3.5 flex items-center gap-3">
-                      <div onClick={() => setPatientModalHN(patient.hn)} className="w-11 h-11 bg-purple-50 group-hover:bg-purple-600 rounded-full flex items-center justify-center shrink-0 transition-all duration-200 border border-purple-100 cursor-pointer">
-                        <User className="w-5 h-5 text-purple-400 group-hover:text-white transition-colors" />
+                      <div onClick={() => setPatientModalHN(patient.hn)}
+                        className={`w-11 h-11 ${tierCfg.iconBg} rounded-full flex items-center justify-center shrink-0 transition-all duration-200 cursor-pointer shadow-sm`}>
+                        {React.createElement(tierCfg.Icon, { className: `w-5 h-5 ${tierCfg.iconColor}` })}
                       </div>
                       <div className="flex-grow min-w-0 cursor-pointer" onClick={() => setPatientModalHN(patient.hn)}>
-                        <h3 className="text-sm font-bold text-slate-800 group-hover:text-purple-700 transition-colors truncate">{patient.fullName}</h3>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <h3 className="text-sm font-bold text-slate-800 group-hover:text-purple-700 transition-colors truncate">{patient.fullName}</h3>
+                          <MemberBadge tier={patient.membershipTier} size="xs" />
+                        </div>
                         <div className="flex flex-wrap items-center gap-x-2 mt-0.5">
                           <span className="flex items-center text-[11px] text-slate-400 font-medium"><Hash className="w-2.5 h-2.5 mr-0.5 text-purple-300" />{patient.hn}</span>
                           {patient.phone && <><span className="text-slate-200">·</span><span className="flex items-center text-[11px] text-slate-400 font-medium"><Phone className="w-2.5 h-2.5 mr-0.5 text-purple-300" />{patient.phone}</span></>}
@@ -1716,6 +1832,13 @@ const PatientsTab = ({ records, user, isOffline, onAddBookingForPatient }) => {
                             {totalImages > 0 && <><span className="text-slate-200">·</span><ImageIcon className="w-2.5 h-2.5 text-purple-300" /><span className="text-[11px] text-slate-400">{totalImages}</span></>}
                           </div>
                         </div>
+                        {/* Tier change button */}
+                        <button
+                          onClick={e => { e.stopPropagation(); setMembershipSelectorHN(patient.hn); }}
+                          className="p-2 text-slate-300 hover:text-amber-500 hover:bg-amber-50 rounded-xl transition-colors shrink-0"
+                          title="เปลี่ยนประเภทสมาชิก">
+                          <Crown className="w-4 h-4" />
+                        </button>
                         <button
                           onClick={e => { e.stopPropagation(); setEditPatientHN(patient.hn); setEditPatientForm({ fullName: patient.fullName, phone: patient.phone || '' }); }}
                           className="p-2 text-slate-300 hover:text-purple-600 hover:bg-purple-50 rounded-xl transition-colors shrink-0">
@@ -1739,6 +1862,8 @@ const PatientsTab = ({ records, user, isOffline, onAddBookingForPatient }) => {
         const allAfter = allSorted.flatMap(r => (r.imagesAfter || []).map(src => ({ src, record: r })));
         const totalSpend = modalPatient.records.reduce((s, r) => s + (r.price || 0), 0);
         const totalImages = allBefore.length + allAfter.length;
+        const tier = modalPatient.membershipTier || DEFAULT_TIER;
+        const tierCfg = MEMBERSHIP_TIERS[tier] || MEMBERSHIP_TIERS[DEFAULT_TIER];
 
         const CarouselRow = ({ items, label, labelColor }) => items.length === 0 ? null : (
           <div className="mb-2">
@@ -1760,16 +1885,21 @@ const PatientsTab = ({ records, user, isOffline, onAddBookingForPatient }) => {
         return (
           <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center" onClick={() => setPatientModalHN(null)}>
             <div className="bg-[#f8f7fc] w-full sm:max-w-3xl sm:rounded-3xl rounded-t-3xl shadow-2xl flex flex-col overflow-hidden" style={{ maxHeight: '92vh' }} onClick={e => e.stopPropagation()}>
-              <div className="bg-gradient-to-br from-purple-900 via-purple-700 to-purple-500 px-5 pt-5 pb-4 shrink-0">
+              <div className={`bg-gradient-to-br ${tierCfg.headerGradient} px-5 pt-5 pb-4 shrink-0`}>
                 <div className="w-10 h-1 bg-white/30 rounded-full mx-auto mb-4 sm:hidden" />
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center border border-white/20 shrink-0"><User className="w-7 h-7 text-white" /></div>
+                    <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center border border-white/20 shrink-0">
+                      {React.createElement(tierCfg.Icon, { className: 'w-7 h-7 text-white' })}
+                    </div>
                     <div>
-                      <h2 className="text-xl font-bold text-white leading-tight">{modalPatient.fullName}</h2>
+                      <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                        <h2 className="text-xl font-bold text-white leading-tight">{modalPatient.fullName}</h2>
+                        <MemberBadge tier={tier} size="sm" />
+                      </div>
                       <div className="flex flex-wrap items-center gap-x-3 mt-0.5">
-                        <span className="flex items-center text-purple-200 text-xs font-medium"><Hash className="w-3 h-3 mr-0.5" />{modalPatient.hn}</span>
-                        {modalPatient.phone && <span className="flex items-center text-purple-200 text-xs font-medium"><Phone className="w-3 h-3 mr-0.5" />{modalPatient.phone}</span>}
+                        <span className="flex items-center text-white/80 text-xs font-medium"><Hash className="w-3 h-3 mr-0.5" />{modalPatient.hn}</span>
+                        {modalPatient.phone && <span className="flex items-center text-white/80 text-xs font-medium"><Phone className="w-3 h-3 mr-0.5" />{modalPatient.phone}</span>}
                       </div>
                       <div className="flex items-center gap-3 mt-2">
                         <span className="bg-white/15 text-white text-xs font-semibold px-2.5 py-1 rounded-lg">{modalPatient.count} ครั้ง</span>
@@ -1780,14 +1910,18 @@ const PatientsTab = ({ records, user, isOffline, onAddBookingForPatient }) => {
                   </div>
                   <button onClick={() => setPatientModalHN(null)} className="p-2 hover:bg-white/20 rounded-full transition-colors shrink-0"><X className="w-5 h-5 text-white" /></button>
                 </div>
-                <div className="grid grid-cols-2 gap-2 mt-3">
-                  <button onClick={() => { resetProc(); setProcForm(f => ({ ...f, serviceDate: today })); setAddProcPatient({ fullName: modalPatient.fullName, hn: modalPatient.hn, phone: modalPatient.phone || '' }); setPatientModalHN(null); }}
+                <div className="grid grid-cols-3 gap-2 mt-3">
+                  <button onClick={() => { resetProc(); setProcForm(f => ({ ...f, serviceDate: today })); setAddProcPatient({ fullName: modalPatient.fullName, hn: modalPatient.hn, phone: modalPatient.phone || '', membershipTier: tier }); setPatientModalHN(null); }}
                     className="bg-white text-purple-700 hover:bg-purple-50 text-sm font-bold py-2.5 rounded-xl transition-colors flex items-center justify-center shadow-sm">
-                    <Plus className="w-4 h-4 mr-2" /> เพิ่มประวัติหัตถการ
+                    <Plus className="w-4 h-4 mr-2" /> เพิ่มประวัติ
                   </button>
                   <button onClick={() => { onAddBookingForPatient(modalPatient); setPatientModalHN(null); }}
                     className="bg-blue-500 hover:bg-blue-600 text-white text-sm font-bold py-2.5 rounded-xl transition-colors flex items-center justify-center shadow-sm">
                     <CalendarPlus className="w-4 h-4 mr-2" /> นัดหมายใหม่
+                  </button>
+                  <button onClick={() => { setMembershipSelectorHN(modalPatient.hn); setPatientModalHN(null); }}
+                    className="bg-amber-400 hover:bg-amber-500 text-white text-sm font-bold py-2.5 rounded-xl transition-colors flex items-center justify-center shadow-sm">
+                    <Crown className="w-4 h-4 mr-2" /> เปลี่ยน Tier
                   </button>
                 </div>
               </div>
@@ -1862,6 +1996,23 @@ const PatientsTab = ({ records, user, isOffline, onAddBookingForPatient }) => {
         );
       })()}
 
+      {/* Membership Selector Modal */}
+      {membershipSelectorHN && (() => {
+        const patient = groupedMap.get(membershipSelectorHN);
+        if (!patient) return null;
+        return (
+          <MembershipSelectorModal
+            currentTier={patient.membershipTier || DEFAULT_TIER}
+            patientName={patient.fullName}
+            onClose={() => setMembershipSelectorHN(null)}
+            onSave={async (newTier) => {
+              await saveMembershipTier(membershipSelectorHN, newTier);
+              setMembershipSelectorHN(null);
+            }}
+          />
+        );
+      })()}
+
       {/* Edit Record Modal */}
       {editingRecord && (
         <div className="fixed inset-0 bg-purple-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 pt-10">
@@ -1912,7 +2063,7 @@ const PatientsTab = ({ records, user, isOffline, onAddBookingForPatient }) => {
         </div>
       )}
 
-      {/* ── Add Procedure Modal (inline, from patient profile) ── */}
+      {/* Add Procedure Modal */}
       {addProcPatient && (
         <>
           <input type="file" ref={procBeforeRef} onChange={e => handleProcImageAdd(e,'before')} accept="image/*" multiple className="hidden" />
@@ -1924,13 +2075,15 @@ const PatientsTab = ({ records, user, isOffline, onAddBookingForPatient }) => {
                   <div className="p-2 bg-white/20 rounded-xl"><FileEdit className="w-5 h-5" /></div>
                   <div>
                     <h2 className="text-base font-bold leading-tight">เพิ่มประวัติหัตถการ</h2>
-                    <p className="text-purple-200 text-[11px]">{addProcPatient.fullName} · {addProcPatient.hn}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-purple-200 text-[11px]">{addProcPatient.fullName} · {addProcPatient.hn}</p>
+                      <MemberBadge tier={addProcPatient.membershipTier} size="xs" />
+                    </div>
                   </div>
                 </div>
                 <button onClick={() => { setAddProcPatient(null); resetProc(); }} className="p-1.5 hover:bg-white/20 rounded-full transition-colors"><X className="w-5 h-5" /></button>
               </div>
               <div className="overflow-y-auto flex-grow p-5 space-y-4">
-                {/* Service details */}
                 <div className="space-y-3">
                   <h3 className="text-xs font-bold text-purple-400 uppercase tracking-wider border-b pb-1">รายละเอียดหัตถการ</h3>
                   <div className="grid grid-cols-2 gap-3">
@@ -1959,7 +2112,6 @@ const PatientsTab = ({ records, user, isOffline, onAddBookingForPatient }) => {
                   </div>
                 </div>
                 <StaffFields theme="purple" formData={procStaff} handleInputChange={e => setProcStaff(s => ({ ...s, [e.target.name]: e.target.value }))} />
-                {/* Images */}
                 <div>
                   <h3 className="text-xs font-bold text-purple-400 uppercase tracking-wider border-b pb-1 mb-3">รูปภาพก่อน / หลังทำ</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1985,7 +2137,7 @@ const PatientsTab = ({ records, user, isOffline, onAddBookingForPatient }) => {
         </>
       )}
 
-      {/* ── Edit Patient Info Modal ── */}
+      {/* Edit Patient Info Modal */}
       {editPatientHN && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden">
@@ -2137,7 +2289,12 @@ export default function App() {
 
   const patientMap = new Map();
   records.forEach(r => {
-    if (!patientMap.has(r.hn)) patientMap.set(r.hn, { hn: r.hn, fullName: r.fullName, phone: r.phone || '' });
+    if (!patientMap.has(r.hn)) {
+      patientMap.set(r.hn, { hn: r.hn, fullName: r.fullName, phone: r.phone || '', membershipTier: r.membershipTier || DEFAULT_TIER });
+    } else {
+      const p = patientMap.get(r.hn);
+      if (r.membershipTier && MEMBERSHIP_TIERS[r.membershipTier]) p.membershipTier = r.membershipTier;
+    }
   });
   const patients = Array.from(patientMap.values());
 
@@ -2199,7 +2356,7 @@ export default function App() {
 
       <main className="max-w-5xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-8">
         {activeTab === 'dashboard' && (
-          <DashboardTab bookings={bookings} patients={patients} isOffline={isOffline}
+          <DashboardTab bookings={bookings} patients={patients} isOffline={isOffline} records={records}
             initialBooking={pendingBooking} onPendingBookingConsumed={() => setPendingBooking(null)} />
         )}
         {activeTab === 'summary' && <SummaryTab bookings={bookings} />}

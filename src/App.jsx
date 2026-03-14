@@ -810,6 +810,7 @@ const BookingDetailModal = ({ booking, onClose, onUpdateStatus, onUpdateCallStat
   const [showReschedule, setShowReschedule] = useState(false);
   const [reschedDate, setReschedDate] = useState(booking.bookingDate);
   const [reschedTime, setReschedTime] = useState(booking.bookingTime);
+  const [reschedWarn, setReschedWarn] = useState('');
   const [showNextBooking, setShowNextBooking] = useState(false);
   const [nextDate, setNextDate] = useState('');
   const [nextTime, setNextTime] = useState(booking.bookingTime);
@@ -857,6 +858,21 @@ const BookingDetailModal = ({ booking, onClose, onUpdateStatus, onUpdateCallStat
 
   const doReschedule = async () => {
     if (!reschedDate || !reschedTime) return;
+
+    // ✅ Check duplicate on new date (same HN / name / phone)
+    const dups = findDuplicateBookings(allBookings, {
+      hn: booking.hn,
+      name: booking.customerName,
+      phone: booking.phoneNumber,
+      date: reschedDate,
+      excludeId: booking.id,
+    });
+    if (dups.length) {
+      const warn = buildDupWarning(dups, { hn: booking.hn, name: booking.customerName, phone: booking.phoneNumber });
+      setReschedWarn(warn);
+      return;
+    }
+    setReschedWarn('');
     setUpdating(true);
     await onUpdateStatus(booking.id, { status: 'เลื่อนนัด' });
     const cleanProc = (booking.procedure || '').replace(/\s*\(ย้ายจาก.*?\)/g, '').trim();
@@ -993,18 +1009,30 @@ const BookingDetailModal = ({ booking, onClose, onUpdateStatus, onUpdateCallStat
             <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-2xl space-y-3">
               <h5 className="text-sm font-bold text-indigo-800 flex items-center gap-2"><CalendarDays className="w-4 h-4" /> ระบุวันและเวลาใหม่</h5>
               <div className="grid grid-cols-2 gap-2">
-                <input type="date" value={reschedDate} onChange={e => setReschedDate(e.target.value)} min={todayStr()}
+                <input type="date" value={reschedDate} onChange={e => { setReschedDate(e.target.value); setReschedWarn(''); }} min={todayStr()}
                   className="p-2 rounded-xl border border-indigo-200 text-sm outline-none focus:ring-2 focus:ring-indigo-400 bg-white" />
-                <select value={reschedTime} onChange={e => setReschedTime(e.target.value)}
+                <select value={reschedTime} onChange={e => { setReschedTime(e.target.value); setReschedWarn(''); }}
                   className="p-2 rounded-xl border border-indigo-200 text-sm outline-none focus:ring-2 focus:ring-indigo-400 bg-white">
                   <option value="">เวลา</option>
                   {TIME_SLOTS.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
+              {reschedWarn && (
+                <div className="flex items-start gap-2 bg-amber-50 border-2 border-amber-300 rounded-xl px-3 py-2.5">
+                  <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                  <div>
+                    {reschedWarn.split('\n').map((line, i) => (
+                      <p key={i} className={`${i === 0 ? 'text-amber-800 font-bold text-xs' : 'text-amber-700 text-[11px] font-medium mt-0.5'}`}>{line}</p>
+                    ))}
+                    <p className="text-amber-600 text-[10px] mt-1 font-semibold">ไม่สามารถเลื่อนไปวันนี้ได้ กรุณาเลือกวันอื่น</p>
+                  </div>
+                </div>
+              )}
               <div className="flex gap-2">
-                <button onClick={() => setShowReschedule(false)} className="px-3 py-2 bg-white text-indigo-600 border border-indigo-200 font-bold rounded-xl text-sm">ยกเลิก</button>
-                <button onClick={doReschedule} disabled={updating || !reschedDate || !reschedTime}
-                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-xl text-sm transition-all disabled:opacity-50">ยืนยันย้ายคิว</button>
+                <button onClick={() => { setShowReschedule(false); setReschedWarn(''); }} className="px-3 py-2 bg-white text-indigo-600 border border-indigo-200 font-bold rounded-xl text-sm">ยกเลิก</button>
+                <button onClick={doReschedule} disabled={updating || !reschedDate || !reschedTime || !!reschedWarn}
+                  className={`flex-1 font-bold py-2 rounded-xl text-sm transition-all disabled:opacity-50 text-white
+                    ${reschedWarn ? 'bg-amber-300 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'}`}>ยืนยันย้ายคิว</button>
               </div>
             </div>
           )}
@@ -1515,6 +1543,8 @@ const SummaryTab = ({ bookings }) => {
   const [start, setStart] = useState(firstDay);
   const [end, setEnd] = useState(todayStr());
   const [result, setResult] = useState(null);
+  // ✅ Drill-down: { bookerName, label, bookings[] }
+  const [drillDown, setDrillDown] = useState(null);
 
   const generate = () => {
     const filtered = bookings.filter(b => b.bookingDate >= start && b.bookingDate <= end);
@@ -1538,17 +1568,20 @@ const SummaryTab = ({ bookings }) => {
       else if (s === 'ยกเลิกนัด') totals.cancelled++;
 
       const key = normalizeKey(b.bookerName) || 'ไม่ระบุ';
-      // Store displayName from first occurrence (cleaned, but preserves original Thai case)
+      // Store displayName from first occurrence + bookings arrays per status
       if (!byBooker[key]) byBooker[key] = {
         displayName: (b.bookerName || '').replace(/[\u200B\u200C\u200D\uFEFF\u00A0]/g, '').trim().replace(/\s+/g, ' ') || 'ไม่ระบุ',
-        total: 0, arrived: 0, upcoming: 0, rescheduled: 0, noShow: 0, cancelled: 0
+        total: 0, arrived: 0, upcoming: 0, rescheduled: 0, noShow: 0, cancelled: 0,
+        // ✅ store booking lists for drill-down modal
+        list_all: [], list_arrived: [], list_upcoming: [], list_rescheduled: [], list_noShow: [], list_cancelled: [],
       };
       byBooker[key].total++;
-      if (s === 'มาแล้ว') byBooker[key].arrived++;
-      else if (s === 'ยังไม่มา') byBooker[key].upcoming++;
-      else if (s === 'เลื่อนนัด') byBooker[key].rescheduled++;
-      else if (s === 'ไม่มาตามนัด') byBooker[key].noShow++;
-      else if (s === 'ยกเลิกนัด') byBooker[key].cancelled++;
+      byBooker[key].list_all.push(b);
+      if (s === 'มาแล้ว') { byBooker[key].arrived++; byBooker[key].list_arrived.push(b); }
+      else if (s === 'ยังไม่มา') { byBooker[key].upcoming++; byBooker[key].list_upcoming.push(b); }
+      else if (s === 'เลื่อนนัด') { byBooker[key].rescheduled++; byBooker[key].list_rescheduled.push(b); }
+      else if (s === 'ไม่มาตามนัด') { byBooker[key].noShow++; byBooker[key].list_noShow.push(b); }
+      else if (s === 'ยกเลิกนัด') { byBooker[key].cancelled++; byBooker[key].list_cancelled.push(b); }
     });
     setResult({ totals, byBooker });
   };
@@ -1611,15 +1644,29 @@ const SummaryTab = ({ bookings }) => {
                     const pct = s.total > 0 ? ((s.arrived / s.total) * 100).toFixed(1) : '0.0';
                     const pctNum = parseFloat(pct);
                     const pctColor = pctNum >= 70 ? 'bg-emerald-100 text-emerald-700' : pctNum >= 50 ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700';
+                    // helper: open drill-down modal for this booker + status filter
+                    const open = (label, list) => { if (list.length > 0) setDrillDown({ bookerName: s.displayName, label, bookings: list }); };
+                    const CellBtn = ({ count, colorClass, list, label }) => count > 0 ? (
+                      <button onClick={() => open(label, list)}
+                        className={`font-bold text-sm underline-offset-2 hover:underline cursor-pointer transition-opacity hover:opacity-70 ${colorClass}`}>
+                        {count}
+                      </button>
+                    ) : <span className="text-sm text-slate-300">0</span>;
                     return (
-                      <tr key={key} className="border-b border-slate-100 hover:bg-slate-50">
-                        <td className="px-3 py-3 font-bold text-gray-800 text-sm whitespace-nowrap">{s.displayName}</td>
-                        <td className="px-3 py-3 text-center font-bold text-blue-600 text-sm">{s.total}</td>
-                        <td className="px-3 py-3 text-center text-emerald-600 text-sm">{s.arrived}</td>
-                        <td className="px-3 py-3 text-center text-amber-600 text-sm">{s.upcoming}</td>
-                        <td className="px-3 py-3 text-center text-indigo-600 text-sm">{s.rescheduled}</td>
-                        <td className="px-3 py-3 text-center text-rose-600 text-sm">{s.noShow}</td>
-                        <td className="px-3 py-3 text-center text-slate-600 text-sm">{s.cancelled}</td>
+                      <tr key={key} className="border-b border-slate-100 hover:bg-blue-50/40 transition-colors">
+                        <td className="px-3 py-3 whitespace-nowrap">
+                          <button onClick={() => open('ทั้งหมด', s.list_all)}
+                            className="font-bold text-gray-800 text-sm hover:text-blue-600 transition-colors text-left flex items-center gap-1.5 group">
+                            {s.displayName}
+                            <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-blue-400 shrink-0" />
+                          </button>
+                        </td>
+                        <td className="px-3 py-3 text-center"><CellBtn count={s.total} colorClass="text-blue-600" list={s.list_all} label="ทั้งหมด" /></td>
+                        <td className="px-3 py-3 text-center"><CellBtn count={s.arrived} colorClass="text-emerald-600" list={s.list_arrived} label="มาแล้ว" /></td>
+                        <td className="px-3 py-3 text-center"><CellBtn count={s.upcoming} colorClass="text-amber-600" list={s.list_upcoming} label="ยังไม่มา" /></td>
+                        <td className="px-3 py-3 text-center"><CellBtn count={s.rescheduled} colorClass="text-indigo-600" list={s.list_rescheduled} label="เลื่อนนัด" /></td>
+                        <td className="px-3 py-3 text-center"><CellBtn count={s.noShow} colorClass="text-rose-600" list={s.list_noShow} label="ไม่มาตามนัด" /></td>
+                        <td className="px-3 py-3 text-center"><CellBtn count={s.cancelled} colorClass="text-slate-500" list={s.list_cancelled} label="ยกเลิกนัด" /></td>
                         <td className="px-3 py-3 text-center"><span className={`inline-block px-2 py-1 rounded-full text-xs font-bold ${pctColor}`}>{pct}%</span></td>
                       </tr>
                     );
@@ -1629,6 +1676,54 @@ const SummaryTab = ({ bookings }) => {
             </div>
           </div>
         </>
+      )}
+
+      {/* ✅ Drill-down modal: รายชื่อลูกค้าของผู้นัดคนนั้น */}
+      {drillDown && (
+        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[85vh]">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-700 to-indigo-600 px-5 py-4 flex items-center justify-between text-white shrink-0 rounded-t-3xl sm:rounded-t-3xl">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-white/20 rounded-xl"><UsersRound className="w-5 h-5" /></div>
+                <div>
+                  <h3 className="font-bold text-base leading-tight">{drillDown.bookerName}</h3>
+                  <p className="text-blue-200 text-[11px]">{drillDown.label} · {drillDown.bookings.length} รายการ</p>
+                </div>
+              </div>
+              <button onClick={() => setDrillDown(null)} className="p-1.5 hover:bg-white/20 rounded-full transition-colors"><X className="w-5 h-5" /></button>
+            </div>
+            {/* List */}
+            <div className="overflow-y-auto flex-grow p-4 space-y-2">
+              {drillDown.bookings.length === 0 ? (
+                <p className="text-center text-slate-400 py-8 text-sm">ไม่มีข้อมูล</p>
+              ) : [...drillDown.bookings].sort((a,b) => a.bookingDate.localeCompare(b.bookingDate) || (a.bookingTime||'').localeCompare(b.bookingTime||'')).map((b, idx) => {
+                const sc = STATUS_CONFIG[b.status] || STATUS_CONFIG['ยังไม่มา'];
+                return (
+                  <div key={b.id || idx} className="bg-white border-2 border-slate-100 rounded-2xl px-4 py-3 flex items-center gap-3 hover:border-blue-200 transition-colors">
+                    <div className="text-slate-300 text-[10px] font-bold w-5 shrink-0 text-center">{idx+1}</div>
+                    <div className={`w-2 h-2 rounded-full shrink-0 ${sc.dot}`} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-bold text-slate-800 text-sm truncate">{b.customerName || 'ไม่มีชื่อ'}</p>
+                        {b.hn && <span className="text-[10px] font-bold text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded-md flex items-center gap-0.5"><Hash className="w-2.5 h-2.5" />{b.hn}</span>}
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        {b.phoneNumber && <span className="text-[11px] text-slate-400 flex items-center gap-0.5"><Phone className="w-2.5 h-2.5" />{b.phoneNumber}</span>}
+                        {b.procedure && <span className="text-[11px] text-slate-400 truncate max-w-[160px]">· {b.procedure}</span>}
+                      </div>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className="text-blue-600 font-bold text-xs">{fmtDateTH(b.bookingDate)}</p>
+                      <p className="text-blue-500 text-[11px]">{b.bookingTime ? `${b.bookingTime} น.` : '-'}</p>
+                      <span className={`inline-block mt-0.5 px-2 py-0.5 rounded-full text-[9px] font-bold ${sc.bg} ${sc.text}`}>{b.status}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

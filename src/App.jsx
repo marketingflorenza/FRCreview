@@ -1419,7 +1419,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
   };
 
   // ─── Dashboard Tab ────────────────────────────────────────────────────────────
-  const DashboardTab = ({ bookings, patients, isOffline, initialBooking, onPendingBookingConsumed, records }) => {
+  const DashboardTab = ({ bookings, patients, isOffline, initialBooking, onPendingBookingConsumed, records, followUpBooking, onFollowUpConsumed }) => {
     const [reportDate, setReportDate] = useState(todayStr());
     const [listModal, setListModal] = useState(null);
     const [selectedBooking, setSelectedBooking] = useState(null);
@@ -1437,7 +1437,15 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
         setViewMode('list');
         if (onPendingBookingConsumed) onPendingBookingConsumed();
       }
-    }, [initialBooking]);
+    }, [initialBooking, onPendingBookingConsumed]);
+
+    useEffect(() => {
+      if (followUpBooking) {
+        setSelectedBooking(followUpBooking);
+        setViewMode('list');
+        if (onFollowUpConsumed) onFollowUpConsumed();
+      }
+    }, [followUpBooking, onFollowUpConsumed]);
 
     const dayBookings = [...bookings.filter(b => b.bookingDate === reportDate)]
       .sort((a, b) => (a.bookingTime || '').localeCompare(b.bookingTime || ''));
@@ -3158,7 +3166,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
         <main className="max-w-5xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-8">
           {activeTab === 'dashboard' && (
             <DashboardTab bookings={bookings} patients={patients} isOffline={isOffline} records={records}
-              initialBooking={pendingBooking} onPendingBookingConsumed={() => setPendingBooking(null)} />
+              initialBooking={pendingBooking} onPendingBookingConsumed={() => setPendingBooking(null)}
+              followUpBooking={followUpSelectedBooking} onFollowUpConsumed={() => setFollowUpSelectedBooking(null)} />
           )}
           {activeTab === 'summary' && <SummaryTab bookings={bookings} />}
           {activeTab === 'patients' && (

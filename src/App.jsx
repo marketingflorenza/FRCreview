@@ -3031,8 +3031,94 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
     );
   };
 
+  // ─── Login Page Component ──────────────────────────────────────────────────
+  const LoginPage = ({ onLogin }) => {
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
+
+    const handleSubmit = (e) => {
+      e.preventDefault();
+      if (username === 'frc' && password === '1234') {
+        onLogin();
+      } else {
+        setError('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
+      }
+    };
+
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-purple-800 to-blue-900 flex items-center justify-center p-4">
+        <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden">
+          <div className="bg-gradient-to-r from-purple-700 to-blue-600 p-8 text-center">
+            <div className="w-20 h-20 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4 backdrop-blur-md border border-white/30">
+              <Database className="w-10 h-10 text-white" />
+            </div>
+            <h1 className="text-2xl font-bold text-white tracking-tight">Florenza Clinic</h1>
+            <p className="text-purple-100 text-sm mt-1">ระบบจัดการข้อมูลคลินิก</p>
+          </div>
+          
+          <form onSubmit={handleSubmit} className="p-8 space-y-5">
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2">ชื่อผู้ใช้</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                  <User className="h-4 w-4 text-slate-400" />
+                </div>
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 transition-all outline-none text-slate-700"
+                  placeholder="กรอกชื่อผู้ใช้"
+                  required
+                />
+              </div>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2">รหัสผ่าน</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                  <Shield className="h-4 w-4 text-slate-400" />
+                </div>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 transition-all outline-none text-slate-700"
+                  placeholder="กรอกรหัสผ่าน"
+                  required
+                />
+              </div>
+            </div>
+
+            {error && (
+              <div className="bg-red-50 text-red-600 text-xs font-bold p-3 rounded-xl border border-red-100 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4" />
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              className="w-full bg-gradient-to-r from-purple-700 to-blue-600 hover:from-purple-800 hover:to-blue-700 text-white font-bold py-3.5 rounded-xl shadow-lg transition-all active:scale-[0.98] mt-2 flex items-center justify-center gap-2"
+            >
+              <UserCheck className="w-5 h-5" />
+              เข้าสู่ระบบ
+            </button>
+          </form>
+          
+          <div className="p-4 bg-slate-50 text-center border-t border-slate-100">
+            <p className="text-[10px] text-slate-400 font-medium">© 2026 Florenza Clinic · All Rights Reserved</p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // ─── Main App ─────────────────────────────────────────────────────────────────
   export default function App() {
+    const [isLoggedIn, setIsLoggedIn] = useState(localStorage.getItem('frc_auth') === 'true');
     const [user, setUser] = useState(null);
     const [records, setRecords] = useState([]);
     const [bookings, setBookings] = useState([]);
@@ -3125,6 +3211,17 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
       </div>
     );
 
+    if (!isLoggedIn) {
+      return <LoginPage onLogin={() => { setIsLoggedIn(true); localStorage.setItem('frc_auth', 'true'); }} />;
+    }
+
+    const handleLogout = () => {
+      if (window.confirm('คุณต้องการออกจากระบบใช่หรือไม่?')) {
+        setIsLoggedIn(false);
+        localStorage.removeItem('frc_auth');
+      }
+    };
+
     return (
       <div className="min-h-screen bg-[#F5F3FF] text-slate-800 font-sans pb-16">
         {isOffline && (
@@ -3148,6 +3245,13 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
                   {isOffline ? <WifiOff className="w-3.5 h-3.5 mr-1.5" /> : <Wifi className="w-3.5 h-3.5 mr-1.5" />}
                   {dbStatus}
                 </div>
+                <button 
+                  onClick={handleLogout}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-white/10 hover:bg-white/20 text-white border border-white/20 transition-all active:scale-95"
+                  title="ออกจากระบบ"
+                >
+                  <PhoneOff className="w-3.5 h-3.5" /> ออกจากระบบ
+                </button>
               </div>
             </div>
           </div>

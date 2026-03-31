@@ -314,6 +314,16 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
     if (!booking.hn || booking.hn.trim() === '') return true;
     return !patients.some(p => String(p.hn).toLowerCase() === String(booking.hn).toLowerCase());
   };
+  // เช็คว่านัดหมายนี้เลยกำหนดหรือต้องติดตามหรือไม่
+  const needsFollowUp = (booking) => {
+    const today = todayStr();
+    const isPast = booking.bookingDate < today;
+    const isNotArrived = booking.status === 'ยังไม่มา';
+  const isNoShow = booking.status === 'ไม่มาตามนัด';
+  
+  // ต้องตามถ้า: (เลยกำหนดแล้วยังไม่มา) หรือ (สถานะคือไม่มาตามนัด)
+  return (isPast && isNotArrived) || isNoShow;
+};
 
   // ─── Sub-components ──────────────────────────────────────────────────────────
   const ImageUploadBlock = ({ type, existingImages, setExistingImages, newPreviews, onRemoveNew, onClickAdd, onLightbox }) => {
@@ -1744,32 +1754,30 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
                       const newCust = isNewCustomer(b, patients);
                       const tier = b.hn ? getPatientTier(records, b.hn) : DEFAULT_TIER;
                       return (
-                        <div key={b.id} onClick={() => setSelectedBooking(b)}
+                        <div key={b.id || idx} onClick={() => setSelectedBooking(b)}
                           className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors group
                             ${newCust ? 'hover:bg-amber-50 border-l-2 border-amber-400' : 'hover:bg-slate-50 border-l-2 border-transparent'}`}>
-                          <div className="text-slate-300 text-[10px] font-bold w-4 shrink-0 text-center">{idx + 1}</div>
                           <div className={`w-2 h-2 rounded-full shrink-0 ${sc.dot}`} />
-                          <div className="text-blue-700 font-bold text-sm w-12 shrink-0">{b.bookingTime ? `${b.bookingTime} น.` : '?'}</div>
                           <div className="flex-grow min-w-0">
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <p className={`font-bold text-sm truncate transition-colors ${newCust ? 'text-amber-800 group-hover:text-amber-900' : 'text-slate-800 group-hover:text-blue-700'}`}>
-                                {b.customerName}
-                              </p>
+                              <p className="font-bold text-sm text-slate-800 truncate">{b.customerName}</p>
                               {newCust ? (
                                 <span className="shrink-0 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-700 border border-amber-300">
                                   <UserPlus className="w-2.5 h-2.5" /> ใหม่
                                 </span>
-                              ) : b.hn && (
-                                <MemberBadge tier={tier} size="xs" />
-                              )}
+                              ) : b.hn && <MemberBadge tier={tier} size="xs" />}
                             </div>
-                            <p className="text-xs text-slate-400 truncate">{b.procedure || '-'}</p>
+                            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                              {b.hn && <span className="text-[11px] text-blue-500 font-bold flex items-center"><Hash className="w-2.5 h-2.5 mr-0.5" />{b.hn}</span>}
+                              {b.phoneNumber && <span className="text-[11px] text-slate-400 flex items-center"><Phone className="w-2.5 h-2.5 mr-0.5" />{b.phoneNumber}</span>}
+                              <span className="text-[11px] text-slate-400 truncate">· {b.procedure || '-'}</span>
+                            </div>
                           </div>
-                          <div className="shrink-0 flex items-center gap-2">
-                            <CallIcon className={`w-3.5 h-3.5 ${cc.text}`} />
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${sc.bg} ${sc.text}`}>{b.status}</span>
-                            <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-blue-500 transition-colors" />
+                          <div className="shrink-0 text-right">
+                            <p className="text-blue-600 font-bold text-xs">{b.bookingTime ? `${b.bookingTime} น.` : '-'}</p>
+                            <span className={`inline-block mt-0.5 text-[9px] font-bold px-2 py-0.5 rounded-full ${sc.bg} ${sc.text}`}>{b.status}</span>
                           </div>
+                          <CallIcon className={`w-3.5 h-3.5 shrink-0 ${cc.text}`} />
                         </div>
                       );
                     })}
@@ -1777,9 +1785,10 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
                 );
               })()}
             </div>
-            </>} {/* end !searchedBookings */}
+            </>}
           </>
         )}
+
         {listModal && <BookingListModal title={listModal.title} bookings={listModal.items} patients={patients} records={records} onClose={() => setListModal(null)} onSelectBooking={b => setSelectedBooking(b)} />}
         {selectedBooking && (
           <BookingDetailModal booking={selectedBooking} onClose={() => setSelectedBooking(null)}
@@ -2903,6 +2912,117 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
     );
   };
 
+  // ─── Follow-Up Notification Bell & Panel ────────────────────────────────────
+  // แสดงรายชื่อลูกค้าที่ต้องโทรติดตาม: (เลยกำหนดแล้วยังไม่มา) หรือ (ไม่มาตามนัด)
+  const FollowUpPanel = ({ bookings, onClose, onSelectBooking }) => {
+    const followUps = [...bookings]
+      .filter(b => needsFollowUp(b))
+      .sort((a, b) => a.bookingDate.localeCompare(b.bookingDate) || (a.bookingTime || '').localeCompare(b.bookingTime || ''));
+
+    const noShowList  = followUps.filter(b => b.status === 'ไม่มาตามนัด');
+    const overdueList = followUps.filter(b => b.status === 'ยังไม่มา');
+
+    const renderItem = (b, idx) => {
+      const sc = STATUS_CONFIG[b.status] || STATUS_CONFIG['ยังไม่มา'];
+      const daysAgo = Math.floor((new Date(todayStr()) - new Date(b.bookingDate)) / 86400000);
+      return (
+        <div key={b.id || idx}
+          onClick={() => { onClose(); if (onSelectBooking) onSelectBooking(b); }}
+          className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-rose-50 border-b border-slate-50 last:border-0 transition-colors group">
+          <div className={`w-2 h-2 rounded-full shrink-0 ${sc.dot}`} />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <p className="font-bold text-sm text-slate-800 truncate">{b.customerName || 'ไม่มีชื่อ'}</p>
+              <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold ${sc.bg} ${sc.text}`}>{b.status}</span>
+            </div>
+            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+              {b.hn && <span className="text-[11px] text-blue-500 font-bold flex items-center"><Hash className="w-2.5 h-2.5 mr-0.5" />{b.hn}</span>}
+              {b.phoneNumber && (
+                <a href={`tel:${b.phoneNumber}`} onClick={e => e.stopPropagation()}
+                  className="text-[11px] text-emerald-600 font-bold flex items-center gap-0.5 hover:underline">
+                  <Phone className="w-2.5 h-2.5" />{b.phoneNumber}
+                </a>
+              )}
+              {b.procedure && <span className="text-[11px] text-slate-400 truncate">· {b.procedure}</span>}
+            </div>
+          </div>
+          <div className="shrink-0 text-right">
+            <p className="text-[11px] font-bold text-slate-600">{fmtDateTH(b.bookingDate)}</p>
+            <p className="text-blue-500 text-[11px]">{b.bookingTime ? `${b.bookingTime} น.` : '-'}</p>
+            {daysAgo > 0 && <p className="text-[10px] text-rose-500 font-bold">{daysAgo} วันที่แล้ว</p>}
+          </div>
+          <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-rose-400 shrink-0" />
+        </div>
+      );
+    };
+
+    return (
+      <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[85vh]">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-rose-600 to-orange-500 px-5 py-4 flex items-center justify-between text-white shrink-0 rounded-t-3xl sm:rounded-t-3xl">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-white/20 rounded-xl relative">
+                <Bell className={`w-5 h-5 ${followUps.length > 0 ? 'animate-ring' : ''}`} />
+                {followUps.length > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 text-rose-800 text-[9px] font-black rounded-full flex items-center justify-center animate-pulse-soft">
+                    {followUps.length > 9 ? '9+' : followUps.length}
+                  </span>
+                )}
+              </div>
+              <div>
+                <h3 className="font-bold text-base leading-tight">รายชื่อต้องโทรติดตาม</h3>
+                <p className="text-rose-100 text-[10px]">{followUps.length} รายการที่ต้องดำเนินการ</p>
+              </div>
+            </div>
+            <button onClick={onClose} className="p-1.5 hover:bg-white/20 rounded-full transition-colors"><X className="w-5 h-5" /></button>
+          </div>
+
+          {followUps.length === 0 ? (
+            <div className="flex-grow flex flex-col items-center justify-center py-16 text-center px-6">
+              <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-4">
+                <CheckCircle className="w-8 h-8 text-emerald-500" />
+              </div>
+              <p className="font-bold text-slate-700 text-base">ไม่มีรายการค้าง</p>
+              <p className="text-slate-400 text-sm mt-1">ลูกค้าทุกรายได้รับการติดตามครบถ้วนแล้ว</p>
+            </div>
+          ) : (
+            <div className="overflow-y-auto flex-grow">
+              {/* ส่วน: ไม่มาตามนัด */}
+              {noShowList.length > 0 && (
+                <>
+                  <div className="px-4 py-2 bg-rose-50 border-b border-rose-100 flex items-center gap-2 sticky top-0 z-10">
+                    <PhoneMissed className="w-3.5 h-3.5 text-rose-500" />
+                    <span className="text-xs font-bold text-rose-700">ไม่มาตามนัด</span>
+                    <span className="ml-auto text-[10px] font-bold bg-rose-500 text-white px-2 py-0.5 rounded-full">{noShowList.length}</span>
+                  </div>
+                  {noShowList.map((b, i) => renderItem(b, `ns-${i}`))}
+                </>
+              )}
+              {/* ส่วน: ยังไม่มา (เลยกำหนด) */}
+              {overdueList.length > 0 && (
+                <>
+                  <div className="px-4 py-2 bg-amber-50 border-b border-amber-100 flex items-center gap-2 sticky top-0 z-10">
+                    <Clock className="w-3.5 h-3.5 text-amber-500" />
+                    <span className="text-xs font-bold text-amber-700">ยังไม่มา (เลยกำหนด)</span>
+                    <span className="ml-auto text-[10px] font-bold bg-amber-500 text-white px-2 py-0.5 rounded-full">{overdueList.length}</span>
+                  </div>
+                  {overdueList.map((b, i) => renderItem(b, `ov-${i}`))}
+                </>
+              )}
+            </div>
+          )}
+
+          <div className="border-t border-slate-100 px-4 py-3 bg-slate-50 shrink-0 rounded-b-3xl">
+            <p className="text-[10px] text-slate-400 text-center">
+              แตะที่รายชื่อเพื่อดูรายละเอียดนัดหมาย · แตะเบอร์โทรเพื่อโทรออก
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // ─── Main App ─────────────────────────────────────────────────────────────────
   export default function App() {
     const [user, setUser] = useState(null);
@@ -2914,6 +3034,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
     const [activeTab, setActiveTab] = useState('dashboard');
     const [alertMessage, setAlertMessage] = useState('');
     const [pendingBooking, setPendingBooking] = useState(null);
+    const [showFollowUpPanel, setShowFollowUpPanel] = useState(false);
+    const [followUpSelectedBooking, setFollowUpSelectedBooking] = useState(null);
 
     useEffect(() => {
       if (!auth) { setLoading(false); return; }
@@ -3013,9 +3135,11 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
                   <p className="text-purple-200 text-[10px] sm:text-sm font-medium">ระบบจัดการประวัติ · นัดหมาย · ติดตาม</p>
                 </div>
               </div>
-              <div className={`hidden md:flex items-center px-3 py-1.5 rounded-full text-xs font-bold border ${isOffline ? 'bg-red-500/20 text-red-100 border-red-400/30' : 'bg-green-500/20 text-green-100 border-green-400/30'}`}>
-                {isOffline ? <WifiOff className="w-3.5 h-3.5 mr-1.5" /> : <Wifi className="w-3.5 h-3.5 mr-1.5" />}
-                {dbStatus}
+              <div className="flex items-center gap-2">
+                <div className={`hidden md:flex items-center px-3 py-1.5 rounded-full text-xs font-bold border ${isOffline ? 'bg-red-500/20 text-red-100 border-red-400/30' : 'bg-green-500/20 text-green-100 border-green-400/30'}`}>
+                  {isOffline ? <WifiOff className="w-3.5 h-3.5 mr-1.5" /> : <Wifi className="w-3.5 h-3.5 mr-1.5" />}
+                  {dbStatus}
+                </div>
               </div>
             </div>
           </div>
@@ -3052,6 +3176,40 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
               <button onClick={() => setAlertMessage('')} className="w-full py-2.5 rounded-xl font-bold text-white bg-purple-600 hover:bg-purple-700 transition-colors">ตกลง</button>
             </div>
           </div>
+        )}
+
+        {/* ─── Floating Follow-Up Bell (Bottom Right) ─── */}
+        {(() => {
+          const followUpCount = bookings.filter(b => needsFollowUp(b)).length;
+          return (
+            <button
+              onClick={() => setShowFollowUpPanel(true)}
+              className={`fixed bottom-6 right-6 z-[40] w-14 h-14 sm:w-16 sm:h-16 rounded-full shadow-2xl flex items-center justify-center transition-all active:scale-90 group
+                ${followUpCount > 0 
+                  ? 'bg-gradient-to-br from-rose-500 to-orange-500 text-white' 
+                  : 'bg-white text-slate-400 border border-slate-100 hover:text-blue-500'}`}
+              title="รายชื่อต้องโทรติดตาม"
+            >
+              <Bell className={`w-6 h-6 sm:w-8 sm:h-8 ${followUpCount > 0 ? 'animate-ring' : 'group-hover:animate-ring'}`} />
+              {followUpCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[22px] h-[22px] bg-white text-rose-600 text-[10px] font-black rounded-full flex items-center justify-center px-1 animate-pulse-soft shadow-md border-2 border-rose-500">
+                  {followUpCount > 99 ? '99+' : followUpCount}
+                </span>
+              )}
+            </button>
+          );
+        })()}
+
+        {/* ─── Follow-Up Notification Panel ─── */}
+        {showFollowUpPanel && (
+          <FollowUpPanel
+            bookings={bookings}
+            onClose={() => { setShowFollowUpPanel(false); setFollowUpSelectedBooking(null); }}
+            onSelectBooking={(b) => {
+              setFollowUpSelectedBooking(b);
+              setActiveTab('dashboard');
+            }}
+          />
         )}
       </div>
     );

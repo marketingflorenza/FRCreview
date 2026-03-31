@@ -3039,7 +3039,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 
     const handleSubmit = (e) => {
       e.preventDefault();
-      if (username === 'frc' && password === '1234') {
+      if (username === 'Frc' && password === '1234') {
         onLogin();
       } else {
         setError('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');

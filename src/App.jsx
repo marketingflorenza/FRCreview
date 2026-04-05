@@ -225,8 +225,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
   const fmtDateTH = (d) => {
     if (!d) return '-';
     const [y, m, day] = d.split('-');
-    const be = parseInt(y) + 543;
-    return `${day}/${m}/${be}`;
+    return `${day}/${m}/${y}`;
   };
   const fmtTimeTH = (t) => t ? `${t} น.` : '-';
   const getRecordImages = (r) => {
@@ -234,7 +233,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
     return b.length || a.length ? [...b, ...a] : r.images || [];
   };
 
-  const TIME_SLOTS = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00'];
+  const TIME_SLOTS = ['11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00'];
 
   const MONTH_TH = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
   const DAY_TH_SHORT = ['อา','จ','อ','พ','พฤ','ศ','ส'];
@@ -242,7 +241,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
   const STATUS_CONFIG = {
     'ยังไม่มา':     { bg: 'bg-blue-100',   text: 'text-blue-700',   dot: 'bg-blue-500',   border: 'border-blue-300' },
     'มาแล้ว':      { bg: 'bg-emerald-100', text: 'text-emerald-700', dot: 'bg-emerald-500', border: 'border-emerald-300' },
-    'เลื่อนนัด':   { bg: 'bg-indigo-100', text: 'text-indigo-700', dot: 'bg-indigo-500',  border: 'border-indigo-300' },
+    'เลื่อนนัด':   { bg: 'bg-yellow-100', text: 'text-yellow-700', dot: 'bg-yellow-500',  border: 'border-yellow-300' },
     'ไม่มาตามนัด': { bg: 'bg-rose-100',   text: 'text-rose-700',   dot: 'bg-rose-500',    border: 'border-rose-300' },
     'ยกเลิกนัด':   { bg: 'bg-red-200',    text: 'text-red-800',    dot: 'bg-red-700',     border: 'border-red-400' },
   };

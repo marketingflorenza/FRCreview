@@ -1026,18 +1026,18 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
                   className={`flex-1 min-w-[70px] ${bg} py-2.5 rounded-xl text-sm font-bold transition-all active:scale-95 disabled:opacity-50`}>{label}</button>
               ))}
               <button onClick={() => { setShowReschedule(v => !v); setShowCancelForm(false); setShowNextBooking(false); }} disabled={updating}
-                className="flex-1 min-w-[70px] bg-indigo-100 hover:bg-indigo-200 text-indigo-700 py-2.5 rounded-xl text-sm font-bold transition-all active:scale-95">เลื่อนนัด</button>
+                className="flex-1 min-w-[70px] bg-yellow-100 hover:bg-yellow-200 text-yellow-700 py-2.5 rounded-xl text-sm font-bold transition-all active:scale-95">เลื่อนนัด</button>
               <button onClick={() => { setShowCancelForm(v => !v); setShowReschedule(false); setShowNextBooking(false); }} disabled={updating}
                 className="flex-1 min-w-[70px] bg-red-800 hover:bg-red-900 text-white py-2.5 rounded-xl text-sm font-bold transition-all active:scale-95">ยกเลิก</button>
             </div>
             {showReschedule && (
-              <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-2xl space-y-3">
-                <h5 className="text-sm font-bold text-indigo-800 flex items-center gap-2"><CalendarDays className="w-4 h-4" /> ระบุวันและเวลาใหม่</h5>
+              <div className="p-4 bg-yellow-50 border border-yellow-100 rounded-2xl space-y-3">
+                <h5 className="text-sm font-bold text-yellow-800 flex items-center gap-2"><CalendarDays className="w-4 h-4" /> ระบุวันและเวลาใหม่</h5>
                 <div className="grid grid-cols-2 gap-2">
                   <input type="date" value={reschedDate} onChange={e => { setReschedDate(e.target.value); setReschedWarn(''); }} min={todayStr()}
-                    className="p-2 rounded-xl border border-indigo-200 text-sm outline-none focus:ring-2 focus:ring-indigo-400 bg-white" />
+                    className="p-2 rounded-xl border border-yellow-200 text-sm outline-none focus:ring-2 focus:ring-yellow-400 bg-white" />
                   <select value={reschedTime} onChange={e => { setReschedTime(e.target.value); setReschedWarn(''); }}
-                    className="p-2 rounded-xl border border-indigo-200 text-sm outline-none focus:ring-2 focus:ring-indigo-400 bg-white">
+                    className="p-2 rounded-xl border border-yellow-200 text-sm outline-none focus:ring-2 focus:ring-yellow-400 bg-white">
                     <option value="">เวลา</option>
                     {TIME_SLOTS.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
@@ -1674,7 +1674,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
                 <StatCard label="ทั้งหมด (รายวัน)" value={dayBookings.length} Icon={Users} bg="bg-blue-50" text="text-blue-600" onClick={() => setListModal({ title: 'ทั้งหมด', items: byStatus('ทั้งหมด') })} />
                 <StatCard label="มาแล้ว" value={byStatus('มาแล้ว').length} Icon={CheckCircle} bg="bg-emerald-50" text="text-emerald-600" onClick={() => setListModal({ title: 'มาแล้ว', items: byStatus('มาแล้ว') })} />
                 <StatCard label="ยังไม่มา" value={byStatus('ยังไม่มา').length} Icon={Clock} bg="bg-amber-50" text="text-amber-600" onClick={() => setListModal({ title: 'ยังไม่มา', items: byStatus('ยังไม่มา') })} />
-                <StatCard label="เลื่อนนัด" value={byStatus('เลื่อนนัด').length} Icon={CalendarDays} bg="bg-indigo-50" text="text-indigo-600" onClick={() => setListModal({ title: 'เลื่อนนัด', items: byStatus('เลื่อนนัด') })} />
+                <StatCard label="เลื่อนนัด" value={byStatus('เลื่อนนัด').length} Icon={CalendarDays} bg="bg-yellow-50" text="text-yellow-600" onClick={() => setListModal({ title: 'เลื่อนนัด', items: byStatus('เลื่อนนัด') })} />
                 <StatCard label="ไม่มาตามนัด" value={byStatus('ไม่มาตามนัด').length} Icon={UserX} bg="bg-rose-50" text="text-rose-600" onClick={() => setListModal({ title: 'ไม่มาตามนัด', items: byStatus('ไม่มาตามนัด') })} />
                 <StatCard label="ยกเลิกนัด" value={byStatus('ยกเลิกนัด').length} Icon={XCircle} bg="bg-slate-100" text="text-slate-600" onClick={() => setListModal({ title: 'ยกเลิกนัด', items: byStatus('ยกเลิกนัด') })} />
               </div>
@@ -1889,7 +1889,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
                   { label: 'นัดรวมทั้งหมด', val: result.totals.all, from: 'from-blue-50', to: 'to-blue-100', text: 'text-blue-700', small: 'text-blue-600' },
                   { label: 'มาแล้ว', val: result.totals.arrived, from: 'from-emerald-50', to: 'to-emerald-100', text: 'text-emerald-700', small: 'text-emerald-600' },
                   { label: 'ยังไม่มา', val: result.totals.upcoming, from: 'from-amber-50', to: 'to-amber-100', text: 'text-amber-700', small: 'text-amber-600' },
-                  { label: 'เลื่อนนัด', val: result.totals.rescheduled, from: 'from-indigo-50', to: 'to-indigo-100', text: 'text-indigo-700', small: 'text-indigo-600' },
+                  { label: 'เลื่อนนัด', val: result.totals.rescheduled, from: 'from-yellow-50', to: 'to-yellow-100', text: 'text-yellow-700', small: 'text-yellow-600' },
                   { label: 'ไม่มาตามนัด', val: result.totals.noShow, from: 'from-rose-50', to: 'to-rose-100', text: 'text-rose-700', small: 'text-rose-600' },
                   { label: 'ยกเลิกนัด', val: result.totals.cancelled, from: 'from-slate-50', to: 'to-slate-100', text: 'text-slate-700', small: 'text-slate-600' },
                 ].map(({ label, val, from, to, text, small }) => (
@@ -1938,7 +1938,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
                           <td className="px-3 py-3 text-center"><CellBtn count={s.total} colorClass="text-blue-600" list={s.list_all} label="ทั้งหมด" /></td>
                           <td className="px-3 py-3 text-center"><CellBtn count={s.arrived} colorClass="text-emerald-600" list={s.list_arrived} label="มาแล้ว" /></td>
                           <td className="px-3 py-3 text-center"><CellBtn count={s.upcoming} colorClass="text-amber-600" list={s.list_upcoming} label="ยังไม่มา" /></td>
-                          <td className="px-3 py-3 text-center"><CellBtn count={s.rescheduled} colorClass="text-indigo-600" list={s.list_rescheduled} label="เลื่อนนัด" /></td>
+                          <td className="px-3 py-3 text-center"><CellBtn count={s.rescheduled} colorClass="text-yellow-600" list={s.list_rescheduled} label="เลื่อนนัด" /></td>
                           <td className="px-3 py-3 text-center"><CellBtn count={s.noShow} colorClass="text-rose-600" list={s.list_noShow} label="ไม่มาตามนัด" /></td>
                           <td className="px-3 py-3 text-center"><CellBtn count={s.cancelled} colorClass="text-slate-500" list={s.list_cancelled} label="ยกเลิกนัด" /></td>
                           <td className="px-3 py-3 text-center"><span className={`inline-block px-2 py-1 rounded-full text-xs font-bold ${pctColor}`}>{pct}%</span></td>

@@ -1018,7 +1018,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
             )}
             <div className="flex flex-wrap gap-2">
               {[
-                { label: 'มาแล้ว', bg: 'bg-yellow-100 hover:bg-yellow-200 text-yellow-700', status: 'มาแล้ว' },
+                { label: 'มาแล้ว', bg: 'bg-green-100 hover:bg-green-200 text-green-700', status: 'มาแล้ว' },
                 { label: 'ยังไม่มา', bg: 'bg-blue-100 hover:bg-blue-200 text-blue-700', status: 'ยังไม่มา' },
                 { label: 'ไม่มา', bg: 'bg-rose-100 hover:bg-rose-200 text-rose-600', status: 'ไม่มาตามนัด' },
               ].map(({ label, bg, status }) => (
@@ -1672,7 +1672,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
               </p>
               <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 sm:gap-3">
                 <StatCard label="ทั้งหมด (รายวัน)" value={dayBookings.length} Icon={Users} bg="bg-blue-50" text="text-blue-600" onClick={() => setListModal({ title: 'ทั้งหมด', items: byStatus('ทั้งหมด') })} />
-                <StatCard label="มาแล้ว" value={byStatus('มาแล้ว').length} Icon={CheckCircle} bg="bg-emerald-50" text="text-emerald-600" onClick={() => setListModal({ title: 'มาแล้ว', items: byStatus('มาแล้ว') })} />
+                <StatCard label="มาแล้ว" value={byStatus('มาแล้ว').length} Icon={CheckCircle} bg="bg-green-50" text="text-green-600" onClick={() => setListModal({ title: 'มาแล้ว', items: byStatus('มาแล้ว') })} />
                 <StatCard label="ยังไม่มา" value={byStatus('ยังไม่มา').length} Icon={Clock} bg="bg-amber-50" text="text-amber-600" onClick={() => setListModal({ title: 'ยังไม่มา', items: byStatus('ยังไม่มา') })} />
                 <StatCard label="เลื่อนนัด" value={byStatus('เลื่อนนัด').length} Icon={CalendarDays} bg="bg-yellow-50" text="text-yellow-600" onClick={() => setListModal({ title: 'เลื่อนนัด', items: byStatus('เลื่อนนัด') })} />
                 <StatCard label="ไม่มาตามนัด" value={byStatus('ไม่มาตามนัด').length} Icon={UserX} bg="bg-rose-50" text="text-rose-600" onClick={() => setListModal({ title: 'ไม่มาตามนัด', items: byStatus('ไม่มาตามนัด') })} />
@@ -1887,7 +1887,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                 {[
                   { label: 'นัดรวมทั้งหมด', val: result.totals.all, from: 'from-blue-50', to: 'to-blue-100', text: 'text-blue-700', small: 'text-blue-600' },
-                  { label: 'มาแล้ว', val: result.totals.arrived, from: 'from-emerald-50', to: 'to-emerald-100', text: 'text-emerald-700', small: 'text-emerald-600' },
+                  { label: 'มาแล้ว', val: result.totals.arrived, from: 'from-green-50', to: 'to-green-100', text: 'text-green-700', small: 'text-green-600' },
                   { label: 'ยังไม่มา', val: result.totals.upcoming, from: 'from-amber-50', to: 'to-amber-100', text: 'text-amber-700', small: 'text-amber-600' },
                   { label: 'เลื่อนนัด', val: result.totals.rescheduled, from: 'from-yellow-50', to: 'to-yellow-100', text: 'text-yellow-700', small: 'text-yellow-600' },
                   { label: 'ไม่มาตามนัด', val: result.totals.noShow, from: 'from-rose-50', to: 'to-rose-100', text: 'text-rose-700', small: 'text-rose-600' },
@@ -1936,7 +1936,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
                             </button>
                           </td>
                           <td className="px-3 py-3 text-center"><CellBtn count={s.total} colorClass="text-blue-600" list={s.list_all} label="ทั้งหมด" /></td>
-                          <td className="px-3 py-3 text-center"><CellBtn count={s.arrived} colorClass="text-emerald-600" list={s.list_arrived} label="มาแล้ว" /></td>
+                          <td className="px-3 py-3 text-center"><CellBtn count={s.arrived} colorClass="text-green-600" list={s.list_arrived} label="มาแล้ว" /></td>
                           <td className="px-3 py-3 text-center"><CellBtn count={s.upcoming} colorClass="text-amber-600" list={s.list_upcoming} label="ยังไม่มา" /></td>
                           <td className="px-3 py-3 text-center"><CellBtn count={s.rescheduled} colorClass="text-yellow-600" list={s.list_rescheduled} label="เลื่อนนัด" /></td>
                           <td className="px-3 py-3 text-center"><CellBtn count={s.noShow} colorClass="text-rose-600" list={s.list_noShow} label="ไม่มาตามนัด" /></td>
